@@ -192,7 +192,7 @@
       transition: width 0.1s linear;
     }
 
-    #towerContainer { display: flex; flex-direction: column; align-items: center; position: relative; }
+    #towerContainer { display: flex; flex-direction: column-reverse; align-items: center; position: relative; }
     .tower-block {
       width: 104px;
       height: 48px;
@@ -522,13 +522,6 @@
     }
     .mini-progress.stamina > .mini-fill { background: linear-gradient(90deg, var(--stamina), #e9c89a); }
     .mini-progress.focus > .mini-fill { background: linear-gradient(90deg, var(--focus-color), var(--accent)); }
-    #tabBar {
-      width: 100%;
-      padding: 8px 24px;
-      background: var(--bg-panel);
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
-    }
     #main {
       flex: 1;
       display: flex;
@@ -558,28 +551,28 @@
     }
     #main::after { opacity: 0.18; animation-duration: 28s; animation-direction: reverse; }
     @keyframes drift { from { transform: translate3d(0,0,0); } to { transform: translate3d(8%, 6%, 0); } }
-    #main #towerContainer { margin-bottom: 40px; }
+    #main #towerContainer { margin-bottom: 80px; }
     #bottomNav {
       display: flex;
       justify-content: center;
-      gap: 10px;
-      background: transparent;
-      border: none;
+      gap: 0;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
       padding: 0;
-      box-shadow: none;
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
     }
     #bottomNav .tab {
-      flex: 0 1 180px;
+      flex: 1;
       max-width: 200px;
-      padding: 10px 14px;
-      border: 1px solid transparent;
-      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      border: none;
       background: transparent;
       color: var(--text-muted);
       font-size: 0.95em;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
+      border-bottom: 3px solid transparent;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -589,20 +582,22 @@
     #bottomNav .tab .tab-icon { width: 26px; height: 26px; flex-shrink: 0; opacity: 0.9; }
     #bottomNav .tab .tab-badge {
       display: none;
-      width: 18px;
-      height: 18px;
+      width: 12px;
+      height: 12px;
       border-radius: 999px;
-      border: 1px solid rgba(124, 156, 244, 0.3);
-      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), var(--accent));
-      box-shadow: 0 0 12px var(--accent-glow);
-      margin-left: 8px;
-      flex: 0 0 auto;
+      border: 1px solid rgba(255, 214, 140, 0.9);
+      background: radial-gradient(circle at 30% 30%, #fff4da, #f5b94c);
+      box-shadow: 0 0 8px rgba(245, 185, 76, 0.6);
+      position: absolute;
+      top: 6px;
+      right: 10px;
     }
     #bottomNav .tab.has-badge .tab-badge { display: inline-flex; }
     #bottomNav .tab:hover { color: var(--text); background: var(--accent-dim); }
     #bottomNav .tab:hover .tab-icon { opacity: 1; }
-    #bottomNav .tab.active { color: var(--accent); background: var(--accent-dim); border-color: var(--accent); }
+    #bottomNav .tab.active { color: var(--accent); background: var(--accent-dim); border-bottom-color: var(--accent); }
     #bottomNav .tab.active .tab-icon { opacity: 1; filter: drop-shadow(0 0 8px var(--accent-glow)); }
+    #bottomNav .tab { position: relative; }
     #bottomNav .tab.tab-locked { opacity: 0.5; cursor: not-allowed; pointer-events: auto; }
     #bottomNav .tab.tab-locked:hover { color: var(--text-muted); background: transparent; }
     #bottomNav .tab.tab-locked:hover .tab-icon { opacity: 0.9; filter: none; }
@@ -611,28 +606,29 @@
       inset: 0;
       background: transparent;
       display: none;
-      align-items: stretch;
-      justify-content: flex-end;
+      align-items: flex-end;
+      justify-content: center;
       z-index: 15;
+      padding: 0 24px 78px;
       pointer-events: none;
     }
     .panel-modal.show { display: flex; }
     .panel-modal .panel-content {
       background: var(--bg-panel);
-      border-left: 1px solid var(--border);
-      border-radius: 0;
-      padding: 24px 22px;
-      width: min(380px, 92vw);
-      height: 100%;
-      max-height: none;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 18px 20px 22px;
+      width: min(980px, 100%);
+      max-height: 280px;
       overflow-y: auto;
-      box-shadow: -10px 0 28px rgba(0, 0, 0, 0.45);
-      transform: translateX(100%);
+      box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.45);
+      transform: translateY(100%);
       transition: transform 0.2s ease, opacity 0.2s ease;
       opacity: 0.98;
       pointer-events: auto;
     }
-    .panel-modal.show .panel-content { transform: translateX(0); opacity: 1; }
+    .panel-modal.show .panel-content { transform: translateY(0); opacity: 1; }
     .panel-modal .panel-header {
       display: flex;
       justify-content: space-between;
@@ -799,7 +795,7 @@
       .game-title { font-size: 1em; }
       #topBar { padding: 10px 14px; gap: 10px; }
       #topBar .resource-block { padding: 4px 8px; font-size: 0.95em; }
-      #tabBar { padding: 6px 14px; }
+      .panel-modal { padding: 0 12px 70px; }
       .panel-modal .panel-content { padding: 20px; }
     }
 
@@ -930,39 +926,37 @@
     <button id="settingsBtn" aria-label="Settings" type="button">&#9881;</button>
   </header>
 
-  <section id="tabBar">
-    <nav id="bottomNav">
-      <button class="tab" data-panel="activitiesModal">
-        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M10 8h4M10 12h4M10 16h2"/></svg>
-        <span>Activities</span>
-        <span class="tab-badge" aria-hidden="true"></span>
-      </button>
-      <button class="tab" data-panel="grimoireModal">
-        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>
-        <span>Grimoire</span>
-        <span class="tab-badge" aria-hidden="true"></span>
-      </button>
-      <button class="tab" data-panel="towerModal">
-        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="9" y="12" width="6" height="6"/><rect x="7" y="6" width="10" height="6"/><rect x="10" y="2" width="4" height="4"/></svg>
-        <span>Tower</span>
-        <span class="tab-badge" aria-hidden="true"></span>
-      </button>
-      <button class="tab" data-panel="relicsModal">
-        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7-9 13-9-13z"/><path d="M3 9h18"/></svg>
-        <span>Relics</span>
-        <span class="tab-badge" aria-hidden="true"></span>
-      </button>
-      <button id="ascensionTab" class="tab tab-locked" data-panel="ascensionModal" title="Unlocks at 50 floors">
-        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-        <span>Ascension</span>
-        <span class="tab-badge" aria-hidden="true"></span>
-      </button>
-    </nav>
-  </section>
-
   <main id="main">
     <div id="towerContainer"></div>
   </main>
+
+  <nav id="bottomNav">
+    <button class="tab" data-panel="activitiesModal">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M10 8h4M10 12h4M10 16h2"/></svg>
+      <span>Activities</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button class="tab" data-panel="grimoireModal">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>
+      <span>Grimoire</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button class="tab" data-panel="towerModal">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="9" y="12" width="6" height="6"/><rect x="7" y="6" width="10" height="6"/><rect x="10" y="2" width="4" height="4"/></svg>
+      <span>Tower</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button class="tab" data-panel="relicsModal">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7-9 13-9-13z"/><path d="M3 9h18"/></svg>
+      <span>Relics</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button id="ascensionTab" class="tab tab-locked" data-panel="ascensionModal" title="Unlocks at 50 floors">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+      <span>Ascension</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+  </nav>
 
   <div id="activitiesModal" class="panel-modal">
     <div class="panel-content">
@@ -1000,7 +994,7 @@
       <div id="roomSummary" class="stat"></div>
       <div id="towerUpgradeButtons"></div>
       <div class="section-divider"></div>
-      <p class="section-title">Upgrades</p>
+      <p class="section-title">Tower Upgrades</p>
       <button id="manaFontBtn">Mana Font<span class="cost" id="manaFontCost"></span><span class="upgrade-preview" id="manaFontPreview"></span></button>
       <button id="towerBtn">Raise Tower Floor<span class="cost" id="towerCost"></span><span class="upgrade-preview" id="towerPreview"></span></button>
       <div class="section-divider"></div>
@@ -2752,7 +2746,7 @@
       }
       if (!task2) {
         if (!towerModal.classList.contains('show')) {
-          addTutorialTip(towerTab, '<strong>Tower</strong><br>Open this tab to buy a Mana Font.', 'bottom');
+          addTutorialTip(towerTab, '<strong>Tower</strong><br>Open this tab to buy a Mana Font.', 'top');
         } else {
           addTutorialTip(manaFontBtn, '<strong>Mana Font</strong><br>Buy one to grow mana/sec. (Tip: press M)', 'left');
         }
@@ -2760,7 +2754,7 @@
       }
       if (!task3) {
         if (!towerModal.classList.contains('show')) {
-          addTutorialTip(towerTab, '<strong>Raise a floor</strong><br>Open Tower to build your first room.', 'bottom');
+          addTutorialTip(towerTab, '<strong>Raise a floor</strong><br>Open Tower to build your first room.', 'top');
         } else {
           addTutorialTip(towerBtn, '<strong>Raise a floor</strong><br>Build your first room to grow the tower.', 'left');
         }
@@ -2768,7 +2762,7 @@
       }
       if (!task4) {
         if (!document.getElementById('activitiesModal').classList.contains('show')) {
-          addTutorialTip(activitiesTab, '<strong>Activities</strong><br>Spend stamina and focus to gain upgrades.', 'bottom');
+          addTutorialTip(activitiesTab, '<strong>Activities</strong><br>Spend stamina and focus to gain upgrades.', 'top');
         } else {
           const firstAction = activitiesDiv ? activitiesDiv.querySelector('button') : null;
           addTutorialTip(firstAction || activitiesTab, '<strong>Try an action</strong><br>Actions improve your tower and magic.', 'left');
