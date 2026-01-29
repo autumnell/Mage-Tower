@@ -2418,7 +2418,7 @@
         id: 'transmutate',
         name: 'Transmutate',
         unlock: 0,
-        desc: 'Convert mana into stamina.',
+        desc: 'Convert mana into stamina',
         cooldownMs: 6000,
         cooldownKey: 'transmutateCooldownEnd',
         effect: () => {
@@ -3912,10 +3912,17 @@
         } else if (memorized) {
           const desc = document.createElement('span');
           desc.className = 'desc';
+          const baseDetail = s.costText ? s.costText() : '';
           const cooldownText = onCooldown ? ('Cooldown ' + cooldownRem.toFixed(1) + 's') : '';
-          const detail = [s.costText ? s.costText() : '', cooldownText].filter(Boolean).join(' · ');
+          const detail = [baseDetail, cooldownText].filter(Boolean).join(' · ');
           desc.innerHTML = s.desc + '<br><span class="detail">' + detail + '</span>';
           btn.appendChild(desc);
+          btn.classList.add('spell-btn');
+          btn.dataset.activeSpell = 'true';
+          btn.dataset.detailBase = baseDetail;
+          btn.dataset.cooldownKey = s.cooldownKey || '';
+          btn.dataset.cooldownMs = String(s.cooldownMs || 0);
+          btn.dataset.focusCost = String(s.focusCost || 0);
           btn.onclick = () => s.effect();
           const lowFocus = (s.focusCost != null && (game.focus || 0) < s.focusCost);
           btn.disabled = lowFocus || onCooldown;
@@ -3930,6 +3937,7 @@
           forgetBtn.textContent = 'Forget';
           forgetBtn.className = 'spell-slot-btn';
           forgetBtn.disabled = !swapReady;
+          forgetBtn.dataset.swapBtn = 'true';
           forgetBtn.onclick = (e) => { e.stopPropagation(); forgetSpell(spellId); };
           wrap.appendChild(btn);
           wrap.appendChild(forgetBtn);
@@ -3943,6 +3951,8 @@
           memBtn.textContent = 'Memorize';
           memBtn.className = 'spell-slot-btn';
           memBtn.disabled = !swapReady || usedSlots >= totalSlots;
+          memBtn.dataset.swapBtn = 'true';
+          memBtn.dataset.memBtn = 'true';
           memBtn.onclick = (e) => { e.stopPropagation(); memorizeSpell(spellId); };
           wrap.appendChild(btn);
           wrap.appendChild(memBtn);
@@ -3983,6 +3993,7 @@
           desc.className = 'desc';
           desc.innerHTML = s.desc + '<br><span class="detail">Level ' + level + ' · Cost ' + formatNum(cost) + ' mana</span>';
           btn.appendChild(desc);
+          btn.dataset.passiveCost = String(cost);
           btn.onclick = () => {
             const c = s.cost() * SCALE;
             if (game.mana >= c) {
@@ -3995,6 +4006,7 @@
           forgetBtn.textContent = 'Forget';
           forgetBtn.className = 'spell-slot-btn';
           forgetBtn.disabled = !swapReady;
+          forgetBtn.dataset.swapBtn = 'true';
           forgetBtn.onclick = (e) => { e.stopPropagation(); forgetSpell(spellId); };
           wrap.appendChild(btn);
           wrap.appendChild(forgetBtn);
@@ -4009,16 +4021,61 @@
           memBtn.textContent = 'Memorize';
           memBtn.className = 'spell-slot-btn';
           memBtn.disabled = !swapReady || (game.memorizedSpells || []).length >= maxSpellSlots();
+          memBtn.dataset.swapBtn = 'true';
+          memBtn.dataset.memBtn = 'true';
           memBtn.onclick = (e) => { e.stopPropagation(); memorizeSpell(spellId); };
           wrap.appendChild(btn);
           wrap.appendChild(memBtn);
         }
         passiveSpellsDiv.appendChild(wrap);
       });
+      updateGrimoireTimers();
     }
 
     function anyActiveSpellCooldown() {
       return activeCooldownCount() > 0;
+    }
+
+    function updateGrimoireTimers() {
+      if (!grimoireSwapTimerEl) return;
+      const swapRem = spellSwapCooldownRemaining();
+      grimoireSwapTimerEl.textContent = formatSwapCooldown(swapRem);
+      const usedSlots = (game.memorizedSpells || []).length;
+      const totalSlots = maxSpellSlots();
+      if (grimoireSpellSlotsEl) grimoireSpellSlotsEl.textContent = 'Spell slots: ' + usedSlots + ' / ' + totalSlots;
+
+      const swapReady = canSwapSpell();
+      document.querySelectorAll('[data-swap-btn="true"]').forEach(btn => {
+        const isMem = btn.dataset.memBtn === 'true';
+        btn.disabled = !swapReady || (isMem && usedSlots >= totalSlots);
+      });
+
+      document.querySelectorAll('.spell-btn[data-active-spell="true"]').forEach(btn => {
+        const focusCost = parseFloat(btn.dataset.focusCost || '0');
+        const cooldownKey = btn.dataset.cooldownKey || '';
+        const cooldownMs = parseFloat(btn.dataset.cooldownMs || '0');
+        const remMs = cooldownKey ? Math.max(0, (game[cooldownKey] || 0) - Date.now()) : 0;
+        const onCooldown = remMs > 0;
+        const lowFocus = focusCost > 0 && (game.focus || 0) < focusCost;
+        btn.disabled = lowFocus || onCooldown;
+
+        const detailSpan = btn.querySelector('.detail');
+        if (detailSpan) {
+          const baseDetail = btn.dataset.detailBase || '';
+          const cooldownText = onCooldown ? ('Cooldown ' + (remMs / 1000).toFixed(1) + 's') : '';
+          detailSpan.textContent = [baseDetail, cooldownText].filter(Boolean).join(' · ');
+        }
+        const overlay = btn.querySelector('.cooldown-overlay');
+        if (overlay && cooldownMs > 0) {
+          const frac = onCooldown ? (1 - Math.min(1, remMs / cooldownMs)) : 1;
+          overlay.style.width = (frac * 100).toFixed(2) + '%';
+        }
+      });
+
+      document.querySelectorAll('[data-passive-cost]').forEach(btn => {
+        const cost = parseFloat(btn.dataset.passiveCost || '0');
+        if (!Number.isNaN(cost)) btn.disabled = (game.mana || 0) < cost;
+      });
     }
 
     function towerTier(f) { if (f >= 40) return 4; if (f >= 30) return 3; if (f >= 10) return 2; return 1; }
@@ -4882,7 +4939,7 @@
         lastActivitiesRender = now;
       }
       if (now - lastSpellRender > 250) {
-        renderSpells();
+        updateGrimoireTimers();
         lastSpellRender = now;
       }
       checkAchievements();
