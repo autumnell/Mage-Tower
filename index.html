@@ -1550,8 +1550,29 @@
       manaFonts: 0,
       specialRooms: initialSpecialRooms(),
       stairs: 0,
-      passive: { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 },
-      active: { boost: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, boostTD: 1, boostHarvest: 1, leylineTapTimer: 0, leylineTapPct: 0 },
+      passive: { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0, aetherFlux: 0, anchoredRituals: 0 },
+      active: {
+        boost: 1,
+        timer: 0,
+        duration: 0,
+        cooldown: 0,
+        harvestTimer: 0,
+        harvestDuration: 0,
+        boostTD: 1,
+        boostHarvest: 1,
+        leylineTapTimer: 0,
+        leylineTapPct: 0,
+        runeTimer: 0,
+        runeStacks: 0,
+        focusCondenserTimer: 0,
+        spellCostDiscountTimer: 0,
+        spellCostDiscountPct: 0,
+        overclockTimer: 0,
+        overclockMult: 1,
+        worldweaveTimer: 0,
+        convergenceTimer: 0,
+        paradoxTimer: 0,
+      },
       studyCount: 0,
       stats: {
         timeDilationCasts: 0,
@@ -1560,6 +1581,8 @@
         focusSurgeCasts: 0,
         vigorInfusionCasts: 0,
         transmutateCasts: 0,
+        manaCapHits: 0,
+        zeroManaCasts: 0,
         totalManaEarned: 0,
         totalSpellsCast: 0,
         timePlayedMs: 0,
@@ -1591,6 +1614,17 @@
       ritualActivityCooldownEnd: 0,
       spellEchoNextFreeAt: 0,
       transmutateCooldownEnd: 0,
+      manaSiphonCooldownEnd: 0,
+      runeAccretionCooldownEnd: 0,
+      staminaTransmuteCooldownEnd: 0,
+      focusCondenserCooldownEnd: 0,
+      leylineResonanceCooldownEnd: 0,
+      towerPulseCooldownEnd: 0,
+      chronoLoopCooldownEnd: 0,
+      nexusOverclockCooldownEnd: 0,
+      worldweaveCooldownEnd: 0,
+      convergenceCooldownEnd: 0,
+      paradoxCastCooldownEnd: 0,
       relics: [],
       relicDraft: [],
       relicDraftSeen: false,
@@ -1600,10 +1634,12 @@
       nextFloorDuplicate: null,
       nextFloorCursed: false,
       nextFloorBonus: false,
+      nextFloorDiscountPct: 0,
       paragonXp: 0,
       paragonSpent: { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 },
       lastActivityOrSpellAt: 0,
       exhaustedUntil: 0,
+      wasManaCapped: false,
       tutorial: { clicked: false, done: false, completedToast: false, settingsOpened: false, keysSeen: false, glossarySeen: false },
     };
     const STAIRS_MANA_PCT = 0.001;
@@ -1766,7 +1802,14 @@
       let c = floorCost();
       if (game.nextFloorBonus) c = 0;
       else if (game.nextFloorCursed) c *= 1.5;
+      const discount = game.nextFloorDiscountPct || 0;
+      if (discount > 0) c *= (1 - discount);
       return c;
+    }
+    function effectiveFloorStaminaCost() {
+      const base = maxStamina() * FLOOR_STAMINA_COST_PCT;
+      const discount = game.nextFloorDiscountPct || 0;
+      return base * (discount > 0 ? (1 - discount) : 1);
     }
 
     function countRooms(name) {
@@ -1881,6 +1924,36 @@
       const relicBonus = relicModifiers().focusRegenMult || 0;
       return 1 + roomBonus + passiveBonus + relicBonus;
     }
+    function activeEffectMultiplier() {
+      return (game.active && game.active.convergenceTimer > 0) ? 2 : 1;
+    }
+    function ritualDurationMultiplier() {
+      const anchored = (game.passive.anchoredRituals || 0) * 0.04;
+      return activeDurationMultiplier() * (1 + anchored);
+    }
+    function ritualCostMultiplier() {
+      const anchored = (game.passive.anchoredRituals || 0) * 0.02;
+      return Math.max(0.4, 1 - anchored);
+    }
+    function currentSpellCostDiscount() {
+      if (game.active && game.active.spellCostDiscountTimer > 0) return game.active.spellCostDiscountPct || 0;
+      return 0;
+    }
+    function activeCooldownCount() {
+      const now = Date.now();
+      let count = 0;
+      if (game.active && game.active.cooldown > 0) count++;
+      const seen = new Set();
+      if (typeof ACTIVE_SPELLS !== 'undefined') {
+        ACTIVE_SPELLS.forEach(s => {
+          if (!s.cooldownKey) return;
+          if (seen.has(s.cooldownKey)) return;
+          seen.add(s.cooldownKey);
+          if ((game[s.cooldownKey] || 0) > now) count++;
+        });
+      }
+      return count;
+    }
     function maxSpellSlots() {
       let slots = 1;
       SPECIAL_ROOM_NAMES.forEach(name => {
@@ -1900,6 +1973,19 @@
     function isMemorized(spellId) {
       const list = game.memorizedSpells || [];
       return Array.isArray(list) && list.includes(spellId);
+    }
+    function hasAchievement(id) {
+      return (game.stats && Array.isArray(game.stats.achievements)) ? game.stats.achievements.includes(id) : false;
+    }
+    function isSpellUnlocked(spell, isActive) {
+      if (typeof spell.unlockCheck === 'function') return spell.unlockCheck();
+      const floors = totalFloors();
+      return floors >= (spell.unlock || 0);
+    }
+    function spellUnlockHint(spell) {
+      if (typeof spell.unlockText === 'function') return spell.unlockText();
+      if (typeof spell.unlock === 'number') return 'Unlocks at ' + spell.unlock + ' floors';
+      return 'Unlock condition not met';
     }
     function effectiveSpellSwapCooldownMs() {
       let ms = SPELL_SWAP_COOLDOWN_MS * Math.max(0.1, 1 - chronurgySwapReduction());
@@ -1989,7 +2075,8 @@
       const roomBonus = 1 + roomEffectSum('manaCapPct');
       const passiveBonus = 1 + (game.passive.manaReservoir || 0) * 0.04;
       const relicBonus = 1 + (relicModifiers().maxManaMult || 0);
-      return base * roomBonus * passiveBonus * relicBonus;
+      const worldweave = (game.active && game.active.worldweaveTimer > 0) ? 2 : 1;
+      return base * roomBonus * passiveBonus * relicBonus * worldweave;
     }
 
     function capMana() {
@@ -2001,7 +2088,8 @@
       const well = (game.passive.staminaWell || 0) * 5;
       const paragon = (game.paragonSpent && game.paragonSpent.stamina) ? game.paragonSpent.stamina * 5 : 0;
       const relicBonus = relicModifiers().maxStaminaBonus || 0;
-      return BASE_STAMINA_MAX + well + paragon + relicBonus;
+      const worldweave = (game.active && game.active.worldweaveTimer > 0) ? 2 : 1;
+      return (BASE_STAMINA_MAX + well + paragon + relicBonus) * worldweave;
     }
 
     function staminaRoomBonusMult() {
@@ -2042,7 +2130,8 @@
     function maxFocus() {
       const paragon = (game.paragonSpent && game.paragonSpent.focus) ? game.paragonSpent.focus * 5 : 0;
       const relicBonus = relicModifiers().maxFocusBonus || 0;
-      return BASE_FOCUS_MAX + paragon + relicBonus;
+      const worldweave = (game.active && game.active.worldweaveTimer > 0) ? 2 : 1;
+      return (BASE_FOCUS_MAX + paragon + relicBonus) * worldweave;
     }
 
     function focusIdleSeconds() {
@@ -2055,7 +2144,8 @@
 
     function focusPerSecond() {
       if (!isRestingForFocus()) return 0;
-      return FOCUS_REGEN_BASE * focusRegenMultiplier();
+      const condenser = (game.active && game.active.focusCondenserTimer > 0) ? 1.5 : 1;
+      return FOCUS_REGEN_BASE * focusRegenMultiplier() * condenser;
     }
 
     function trySpendFocus(amount) {
@@ -2114,11 +2204,20 @@
       m *= conduitMasteryMultiplier();
       m *= towerBondMultiplier();
       m *= leylineNexusMultiplier();
+      if (game.active && game.active.runeStacks > 0) m *= (1 + game.active.runeStacks * 0.01);
       const boostTD = (game.active && game.active.boostTD) ? game.active.boostTD : 1;
       const boostHarvest = (game.active && game.active.boostHarvest) ? game.active.boostHarvest : 1;
       m *= boostTD * boostHarvest;
       if (game.active && game.active.leylineTapTimer > 0) m *= (1 + (game.active.leylineTapPct || 0));
+      if (game.active && game.active.focusCondenserTimer > 0) m *= 0.8;
+      if (game.active && game.active.overclockTimer > 0) m *= (game.active.overclockMult || 5);
+      if (game.active && game.active.paradoxTimer > 0) m *= (2 / 3);
       if (game.ritualBuffEnd && game.ritualBuffEnd > Date.now()) m *= 2;
+      const aetherLvl = game.passive.aetherFlux || 0;
+      if (aetherLvl > 0) {
+        const cdCount = activeCooldownCount();
+        if (cdCount > 0) m *= (1 + cdCount * aetherLvl * 0.008);
+      }
       m *= 1 + game.prestige * PRESTIGE_BONUS + game.softPrestige * PRESTIGE_SOFT_BONUS;
       m *= 1 + game.ascension * ASCENSION_BONUS_PER;
       const asc2 = (game.ascensionTier2 || 0) * ASCENSION_2_BONUS_PER;
@@ -2157,6 +2256,11 @@
       { id: 'sigil_5', name: 'Rune Smith', desc: 'Forge 5 Sigils', check: g => (g.sigilStacks || 0) >= 5, reward: '+1% mana/sec' },
       { id: 'focus_surge_10', name: 'Mind Lance', desc: 'Cast Focus Surge 10 times', check: g => (g.stats && g.stats.focusSurgeCasts) >= 10, reward: '+1% mana/sec' },
       { id: 'first_300', name: 'Skyreach', desc: 'Reach 300 floors', check: g => totalFloorsFromGame(g) >= 300, reward: '+2% mana/sec' },
+      { id: 'loop_master', name: 'Perfecting the Loop', desc: 'Cast 500 spells and reach 200 floors', check: g => (g.stats && g.stats.totalSpellsCast) >= 500 && totalFloorsFromGame(g) >= 200, reward: null },
+      { id: 'overcharger', name: 'Overcharger', desc: 'Reach mana cap 50 times', check: g => (g.stats && g.stats.manaCapHits) >= 50, reward: null },
+      { id: 'architect_nexus', name: 'Architect of the Nexus', desc: 'Build 1 of every room type', check: g => { const sr = g.specialRooms || {}; return SPECIAL_ROOM_NAMES.every(n => sr[n] && sr[n].built); }, reward: null },
+      { id: 'master_grimoire', name: 'Master of the Grimoire', desc: 'Memorize 6 spells at once', check: g => (g.memorizedSpells || []).length >= 6, reward: null },
+      { id: 'in_the_red', name: 'In the Red', desc: 'Cast a spell at 0 mana', check: g => (g.stats && g.stats.zeroManaCasts) >= 1, reward: null },
     ];
 
     function achievementManaMultiplier() {
@@ -2223,6 +2327,7 @@
       if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false, settingsOpened: false, keysSeen: false, glossarySeen: false };
       game.tutorial.clicked = true;
       recordActivityOrSpell();
+      if (game.active && game.active.runeTimer > 0) game.active.runeStacks = (game.active.runeStacks || 0) + 1;
       const g = clickManaGain();
       game.mana = Math.min(game.mana + g.amount, maxMana());
       game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + g.amount;
@@ -2247,16 +2352,18 @@
 
     // -------------------- SPELL COST (Spell Echo + Attune) --------------------
     function trySpendManaForSpell(baseCost) {
-      const discount = game.attuneDiscount || 0;
-      const actualCost = Math.max(0, baseCost * (1 - discount));
+      const discount = (game.attuneDiscount || 0) + currentSpellCostDiscount();
+      const actualCost = Math.max(0, baseCost * (1 - Math.min(0.9, discount)));
       const echoLvl = game.passive.spellEcho || 0;
       const now = Date.now();
       if (echoLvl > 0 && (game.spellEchoNextFreeAt || 0) <= now) {
         game.spellEchoNextFreeAt = now + SPELL_ECHO_FREE_COOLDOWN_MS;
         game.attuneDiscount = 0;
+        if ((game.mana || 0) <= 0) game.stats.zeroManaCasts = (game.stats.zeroManaCasts || 0) + 1;
         return true;
       }
       if (game.mana < actualCost) return false;
+      if ((game.mana || 0) <= 0 && actualCost <= 0) game.stats.zeroManaCasts = (game.stats.zeroManaCasts || 0) + 1;
       game.mana -= actualCost;
       game.attuneDiscount = 0;
       return true;
@@ -2279,13 +2386,14 @@
           if (mana <= 0) return;
           const casts = game.stats.transmutateCasts || 0;
           const fraction = Math.min(1, 0.30 * (1 + casts * 0.05));
+          const efficiency = Math.max(0.4, 1 - casts * 0.05);
           const staminaRoom = maxStamina() - (game.stamina || 0);
           if (staminaRoom <= 0) return;
           const maxSpendForStamina = staminaRoom * 3;
           const manaSpend = Math.min(mana * fraction, maxSpendForStamina);
           if (manaSpend <= 0) return;
           game.mana -= manaSpend;
-          game.stamina = Math.min((game.stamina || 0) + manaSpend / 3, maxStamina());
+          game.stamina = Math.min((game.stamina || 0) + (manaSpend / 3) * efficiency, maxStamina());
           recordActivityOrSpell();
           game.stats.transmutateCasts = casts + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
@@ -2295,7 +2403,8 @@
         costText: () => {
           const casts = game.stats.transmutateCasts || 0;
           const pct = Math.min(1, 0.30 * (1 + casts * 0.05)) * 100;
-          return 'Convert ' + pct.toFixed(0) + '% mana → stamina (3:1). Cooldown 6s.';
+          const eff = Math.max(0.4, 1 - casts * 0.05) * 100;
+          return 'Convert ' + pct.toFixed(0) + '% mana → stamina (3:1). Efficiency ' + eff.toFixed(0) + '%. Cooldown 6s.';
         },
       },
       {
@@ -2313,7 +2422,7 @@
           recordActivityOrSpell();
           game.stats.timeDilationCasts = casts + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
-          const mult = spellEffectMultiplier();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
           const durMult = activeDurationMultiplier();
           game.active.boostTD = 3 * mult;
           game.active.duration = 10 * mult * durMult;
@@ -2322,6 +2431,53 @@
           playSound('spell');
         },
         costText: () => 'Cost ' + formatNum(timeDilationCost(game.stats.timeDilationCasts || 0)) + ' mana, 15 focus',
+      },
+      {
+        id: 'manaSiphon',
+        name: 'Mana Siphon',
+        unlock: 6,
+        focusCost: 10,
+        desc: 'Instantly gain 5 seconds of mana/sec.',
+        cooldownMs: 8000,
+        cooldownKey: 'manaSiphonCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.manaSiphonCooldownEnd || 0) > now) return;
+          if (!trySpendFocus(10)) return;
+          const cost = 120;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
+          const gain = manaPerSecond() * 5 * mult;
+          game.mana = Math.min(game.mana + gain, maxMana());
+          game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.manaSiphonCooldownEnd = now + 8000;
+          playSound('spell');
+        },
+        costText: () => 'Cost 120 mana, 10 focus · Cooldown 8s',
+      },
+      {
+        id: 'runeAccretion',
+        name: 'Rune of Accretion',
+        unlock: 7,
+        desc: 'For 15s, each click adds +1% mana/sec (stacking).',
+        cooldownMs: 20000,
+        cooldownKey: 'runeAccretionCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.runeAccretionCooldownEnd || 0) > now) return;
+          const cost = 400;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = activeDurationMultiplier();
+          game.active.runeTimer = 15 * mult;
+          game.active.runeStacks = 0;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.runeAccretionCooldownEnd = now + 20000;
+          playSound('spell');
+        },
+        costText: () => 'Cost 400 mana · Cooldown 20s',
       },
       {
         id: 'arcaneHarvest',
@@ -2338,7 +2494,7 @@
           recordActivityOrSpell();
           game.stats.arcaneHarvestCasts = (game.stats.arcaneHarvestCasts || 0) + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
-          const mult = spellEffectMultiplier();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
           const durMult = activeDurationMultiplier();
           game.active.boostHarvest = 2 * mult;
           game.active.harvestTimer = 5 * mult * durMult;
@@ -2359,12 +2515,38 @@
           recordActivityOrSpell();
           game.stats.focusSurgeCasts = casts + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
-          const mult = spellEffectMultiplier();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
           const gain = 35 * mult;
           game.focus = Math.min((game.focus || 0) + gain, maxFocus());
           playSound('spell');
         },
         costText: () => 'Cost ' + formatNum(250 * Math.pow(1.35, game.stats.focusSurgeCasts || 0)) + ' mana',
+      },
+      {
+        id: 'staminaTransmute',
+        name: 'Stamina Transmute',
+        unlock: 14,
+        focusCost: 15,
+        desc: 'Convert 10% stamina into 20% mana (scaled by spell effect).',
+        cooldownMs: 18000,
+        cooldownKey: 'staminaTransmuteCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.staminaTransmuteCooldownEnd || 0) > now) return;
+          if (!trySpendFocus(15)) return;
+          const staminaCost = maxStamina() * 0.10;
+          if ((game.stamina || 0) < staminaCost) return;
+          game.stamina -= staminaCost;
+          recordActivityOrSpell();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
+          const gain = maxMana() * 0.20 * mult;
+          game.mana = Math.min(game.mana + gain, maxMana());
+          game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.staminaTransmuteCooldownEnd = now + 18000;
+          playSound('spell');
+        },
+        costText: () => 'Cost 10% stamina, 15 focus · Cooldown 18s',
       },
       {
         id: 'leylineSurge',
@@ -2382,13 +2564,58 @@
           recordActivityOrSpell();
           game.stats.leylineSurgeCasts = (game.stats.leylineSurgeCasts || 0) + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
-          const mult = spellEffectMultiplier();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
           const durMult = activeDurationMultiplier();
           game.active.leylineTapPct = LEYLINE_TAP_PCT * mult;
           game.active.leylineTapTimer = LEYLINE_TAP_DURATION * mult * durMult;
           playSound('spell');
         },
         costText: () => 'Cost ' + formatNum(400 * Math.pow(1.5, game.stats.leylineSurgeCasts || 0)) + ' mana, 25 focus',
+      },
+      {
+        id: 'focusCondenser',
+        name: 'Focus Condenser',
+        unlock: 22,
+        desc: 'For 12s, +50% focus regen but -20% mana/sec.',
+        cooldownMs: 20000,
+        cooldownKey: 'focusCondenserCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.focusCondenserCooldownEnd || 0) > now) return;
+          const cost = 600;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = activeDurationMultiplier();
+          game.active.focusCondenserTimer = 12 * mult;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.focusCondenserCooldownEnd = now + 20000;
+          playSound('spell');
+        },
+        costText: () => 'Cost 600 mana · Cooldown 20s',
+      },
+      {
+        id: 'leylineResonance',
+        name: 'Leyline Resonance',
+        unlock: 32,
+        focusCost: 25,
+        desc: 'For 30s, spells cost 30% less mana.',
+        cooldownMs: 45000,
+        cooldownKey: 'leylineResonanceCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.leylineResonanceCooldownEnd || 0) > now) return;
+          if (!trySpendFocus(25)) return;
+          const cost = 1500;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = activeDurationMultiplier();
+          game.active.spellCostDiscountTimer = 30 * mult;
+          game.active.spellCostDiscountPct = 0.30;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.leylineResonanceCooldownEnd = now + 45000;
+          playSound('spell');
+        },
+        costText: () => 'Cost 1500 mana, 25 focus · Cooldown 45s',
       },
       {
         id: 'wardOfPreservation',
@@ -2427,6 +2654,27 @@
         costText: () => 'Cost ' + formatNum(800) + ' mana, 30 focus',
       },
       {
+        id: 'towerPulse',
+        name: 'Tower Pulse',
+        unlock: 50,
+        desc: 'Next floor costs -25% mana and stamina (single use).',
+        cooldownMs: 30000,
+        cooldownKey: 'towerPulseCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.towerPulseCooldownEnd || 0) > now) return;
+          const cost = 3000;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          game.nextFloorDiscountPct = 0.25;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.towerPulseCooldownEnd = now + 30000;
+          playSound('spell');
+          showToast('Tower Pulse', 'Next floor costs 25% less.');
+        },
+        costText: () => 'Cost 3000 mana · Cooldown 30s',
+      },
+      {
         id: 'vigorInfusion',
         name: 'Vigor Infusion',
         unlock: 65,
@@ -2440,7 +2688,7 @@
           recordActivityOrSpell();
           game.stats.vigorInfusionCasts = casts + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
-          const mult = spellEffectMultiplier();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
           const staminaGain = maxStamina() * 0.25 * mult;
           const focusGain = 15 * mult;
           game.stamina = Math.min(game.stamina + staminaGain, maxStamina());
@@ -2448,6 +2696,150 @@
           playSound('spell');
         },
         costText: () => 'Cost ' + formatNum(1200 * Math.pow(1.45, game.stats.vigorInfusionCasts || 0)) + ' mana, 20 focus',
+      },
+      {
+        id: 'chronoLoop',
+        name: 'Chrono Loop',
+        unlock: 0,
+        unlockCheck: () => hasAchievement('loop_master'),
+        unlockText: () => 'Unlocks: Perfecting the Loop (500 spells + 200 floors)',
+        sortKey: 900,
+        desc: 'Replays the last 60s of passive gains instantly.',
+        cooldownMs: 60 * 60 * 1000,
+        cooldownKey: 'chronoLoopCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.chronoLoopCooldownEnd || 0) > now) return;
+          if (!trySpendFocus(35)) return;
+          const cost = 5000;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const gainMana = manaPerSecond() * 60;
+          const gainStamina = staminaPerSecond() * 60;
+          const gainFocus = focusPerSecond() * 60;
+          game.mana = Math.min(game.mana + gainMana, maxMana());
+          game.stamina = Math.min(game.stamina + gainStamina, maxStamina());
+          game.focus = Math.min((game.focus || 0) + gainFocus, maxFocus());
+          game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gainMana;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.chronoLoopCooldownEnd = now + 60 * 60 * 1000;
+          playSound('milestone');
+        },
+        costText: () => 'Cost 5000 mana, 35 focus · Cooldown 1h',
+      },
+      {
+        id: 'nexusOverclock',
+        name: 'Nexus Overclock',
+        unlock: 0,
+        unlockCheck: () => hasAchievement('overcharger'),
+        unlockText: () => 'Unlocks: Overcharger (cap mana 50 times)',
+        sortKey: 901,
+        desc: 'x5 mana/sec for 60s, then exhausted for 180s.',
+        cooldownMs: 30 * 60 * 1000,
+        cooldownKey: 'nexusOverclockCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.nexusOverclockCooldownEnd || 0) > now) return;
+          if (!trySpendFocus(40)) return;
+          const cost = 8000;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = activeDurationMultiplier();
+          game.active.overclockTimer = 60 * mult;
+          game.active.overclockMult = 5;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.nexusOverclockCooldownEnd = now + 30 * 60 * 1000;
+          playSound('milestone');
+        },
+        costText: () => 'Cost 8000 mana, 40 focus · Cooldown 30m',
+      },
+      {
+        id: 'worldweave',
+        name: 'Worldweave',
+        unlock: 0,
+        unlockCheck: () => hasAchievement('architect_nexus'),
+        unlockText: () => 'Unlocks: Architect of the Nexus (build every room type)',
+        sortKey: 902,
+        desc: 'Double all resource caps for 15 minutes.',
+        cooldownMs: 2 * 60 * 60 * 1000,
+        cooldownKey: 'worldweaveCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.worldweaveCooldownEnd || 0) > now) return;
+          if (!trySpendFocus(50)) return;
+          const cost = 10000;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          game.active.worldweaveTimer = 15 * 60;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.worldweaveCooldownEnd = now + 2 * 60 * 60 * 1000;
+          playSound('milestone');
+        },
+        costText: () => 'Cost 10000 mana, 50 focus · Cooldown 2h',
+      },
+      {
+        id: 'leylineConvergence',
+        name: 'Leyline Convergence',
+        unlock: 0,
+        unlockCheck: () => hasAchievement('master_grimoire'),
+        unlockText: () => 'Unlocks: Master of the Grimoire (memorize 6 spells)',
+        sortKey: 903,
+        desc: 'All active spell effects +100% for 60s.',
+        cooldownMs: 45 * 60 * 1000,
+        cooldownKey: 'convergenceCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.convergenceCooldownEnd || 0) > now) return;
+          if (!trySpendFocus(35)) return;
+          const cost = 6000;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = activeDurationMultiplier();
+          game.active.convergenceTimer = 60 * mult;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.convergenceCooldownEnd = now + 45 * 60 * 1000;
+          playSound('milestone');
+        },
+        costText: () => 'Cost 6000 mana, 35 focus · Cooldown 45m',
+      },
+      {
+        id: 'paradoxCast',
+        name: 'Paradox Cast',
+        unlock: 0,
+        unlockCheck: () => hasAchievement('in_the_red'),
+        unlockText: () => 'Unlocks: In the Red (cast a spell at 0 mana)',
+        sortKey: 904,
+        desc: 'Refresh all active spell cooldowns, but -33% mana/sec for 120s.',
+        cooldownMs: 2 * 60 * 60 * 1000,
+        cooldownKey: 'paradoxCastCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.paradoxCastCooldownEnd || 0) > now) return;
+          if (!trySpendFocus(30)) return;
+          const cost = 4000;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          game.active.paradoxTimer = 120;
+          const cooldownKeys = [
+            'transmutateCooldownEnd',
+            'manaSiphonCooldownEnd',
+            'runeAccretionCooldownEnd',
+            'staminaTransmuteCooldownEnd',
+            'focusCondenserCooldownEnd',
+            'leylineResonanceCooldownEnd',
+            'towerPulseCooldownEnd',
+            'chronoLoopCooldownEnd',
+            'nexusOverclockCooldownEnd',
+            'worldweaveCooldownEnd',
+            'convergenceCooldownEnd',
+          ];
+          cooldownKeys.forEach(key => { game[key] = 0; });
+          if (game.active && game.active.cooldown > 0) game.active.cooldown = 0;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.paradoxCastCooldownEnd = now + 2 * 60 * 60 * 1000;
+          playSound('milestone');
+        },
+        costText: () => 'Cost 4000 mana, 30 focus · Cooldown 2h',
       },
     ];
 
@@ -2467,6 +2859,14 @@
         desc: 'Each level +10% mana/sec per Observatory',
         cost: () => 500 * Math.pow(1.7, game.passive.astral),
         effect: () => game.passive.astral++,
+      },
+      {
+        key: 'aetherFlux',
+        name: 'Aether Flux',
+        unlock: 24,
+        desc: '+0.8% mana/sec per active spell on cooldown (per level).',
+        cost: () => 900 * Math.pow(1.6, game.passive.aetherFlux),
+        effect: () => game.passive.aetherFlux++,
       },
       {
         key: 'conduit',
@@ -2491,6 +2891,14 @@
         desc: '+0.1% mana/sec per floor per level',
         cost: () => 2000 * Math.pow(1.8, game.passive.towerBond),
         effect: () => game.passive.towerBond++,
+      },
+      {
+        key: 'anchoredRituals',
+        name: 'Anchored Rituals',
+        unlock: 38,
+        desc: '+4% ritual duration and -2% ritual cost per level',
+        cost: () => 2400 * Math.pow(1.65, game.passive.anchoredRituals),
+        effect: () => game.passive.anchoredRituals++,
       },
       {
         key: 'staminaWell',
@@ -2679,19 +3087,19 @@
         cooldownKey: 'ritualActivityCooldownEnd',
         effect: () => {
           if (!trySpendFocus(25)) return;
-          const cost = maxStamina() * 0.80;
+          const cost = maxStamina() * 0.80 * ritualCostMultiplier();
           if (game.stamina < cost) return;
           if ((game.ritualActivityCooldownEnd || 0) > Date.now()) return;
           game.stamina -= cost;
           recordActivityOrSpell();
           setExhausted();
           game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          game.ritualBuffEnd = Date.now() + 60 * 1000 * activeDurationMultiplier();
+          game.ritualBuffEnd = Date.now() + 60 * 1000 * ritualDurationMultiplier();
           game.ritualActivityCooldownEnd = Date.now() + RITUAL_ACTIVITY_COOLDOWN_MS;
           playSound('spell');
           showToast('Ritual', '2× all gains for 60s.');
         },
-        costText: () => 'Cost 80% max stamina, 25 focus',
+        costText: () => 'Cost ' + Math.round(80 * ritualCostMultiplier()) + '% max stamina, 25 focus',
       },
       {
         id: 'relicHunt',
@@ -2874,6 +3282,7 @@
       if (typeof game.tutorial.settingsOpened !== 'boolean') game.tutorial.settingsOpened = false;
       if (typeof game.tutorial.keysSeen !== 'boolean') game.tutorial.keysSeen = false;
       if (typeof game.tutorial.glossarySeen !== 'boolean') game.tutorial.glossarySeen = false;
+      if (typeof game.wasManaCapped !== 'boolean') game.wasManaCapped = false;
       if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
       if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
       ensureKeybinds();
@@ -2988,7 +3397,7 @@
       // Tower: can buy font / build floor / upgrade a room
       const canBuyFont = (game.mana || 0) >= manaFontCost();
       const effCost = effectiveFloorCost();
-      const floorStamCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
+      const floorStamCost = effectiveFloorStaminaCost();
       const canBuild = (game.mana || 0) >= effCost && (game.stamina || 0) >= floorStamCost;
       let canUpgrade = false;
       const sr = game.specialRooms || {};
@@ -3006,7 +3415,8 @@
       if (typeof ACTIVITIES !== 'undefined') {
         for (const a of ACTIVITIES) {
           if (totalFloors() < a.unlockFloors) continue;
-          const stamCost = (a.costStaminaPct || 0) * maxStamina();
+          const ritualMult = a.id === 'ritual' ? ritualCostMultiplier() : 1;
+          const stamCost = (a.costStaminaPct || 0) * maxStamina() * ritualMult;
           const focusCost = a.focusCost || 0;
           if ((game.stamina || 0) < stamCost) continue;
           if ((game.focus || 0) < focusCost) continue;
@@ -3027,14 +3437,14 @@
       if (swapReady && usedSlots < totalSlots) {
         const f = totalFloors();
         const seen = new Set(game.memorizedSpells || []);
-        const anyUnlockedUnmemorized = (list, isActive) => list.some(s => f >= s.unlock && !seen.has(getSpellId(s, isActive)));
+        const anyUnlockedUnmemorized = (list, isActive) => list.some(s => isSpellUnlocked(s, isActive) && !seen.has(getSpellId(s, isActive)));
         if (typeof ACTIVE_SPELLS !== 'undefined' && anyUnlockedUnmemorized(ACTIVE_SPELLS, true)) canMemorize = true;
         if (typeof PASSIVE_SPELLS !== 'undefined' && anyUnlockedUnmemorized(PASSIVE_SPELLS, false)) canMemorize = true;
       }
       let canPassiveBuy = false;
       if (typeof PASSIVE_SPELLS !== 'undefined') {
         for (const s of PASSIVE_SPELLS) {
-          if (totalFloors() < s.unlock) continue;
+          if (!isSpellUnlocked(s, false)) continue;
           const spellId = getSpellId(s, false);
           if (!isMemorized(spellId)) continue;
           const cost = (s.cost ? s.cost() * SCALE : 0);
@@ -3090,8 +3500,9 @@
       const fontGainPct = currentMps > 0 ? ((mpsGainFromFont / currentMps) * 100).toFixed(1) : '0';
       if (manaFontPreview) manaFontPreview.textContent = '+' + formatRate(mpsGainFromFont) + '/s (+' + fontGainPct + '%)';
       const effCost = effectiveFloorCost();
-      const floorStamCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
-      towerCostEl.textContent = game.nextFloorBonus ? 'Next floor: Free (+ ' + formatNum(floorStamCost) + ' stamina)' : (game.nextFloorCursed ? 'Next floor: ' + formatNum(effCost) + ' mana, ' + formatNum(floorStamCost) + ' stamina (2× cost, 2× effect)' : 'Cost: ' + formatNum(effCost) + ' mana, ' + formatNum(floorStamCost) + ' stamina');
+      const floorStamCost = effectiveFloorStaminaCost();
+      const discountTag = (game.nextFloorDiscountPct || 0) > 0 ? ' (Tower Pulse: -25%)' : '';
+      towerCostEl.textContent = game.nextFloorBonus ? 'Next floor: Free (+ ' + formatNum(floorStamCost) + ' stamina)' : (game.nextFloorCursed ? 'Next floor: ' + formatNum(effCost) + ' mana, ' + formatNum(floorStamCost) + ' stamina (2× cost, 2× effect)' : 'Cost: ' + formatNum(effCost) + ' mana, ' + formatNum(floorStamCost) + ' stamina' + discountTag);
       if (towerPreview) towerPreview.textContent = '+' + (FLOOR_BONUS * 100).toFixed(1) + '% mana/sec';
 
       const canFullPrestige = totalFloors() >= PRESTIGE_FLOOR;
@@ -3164,8 +3575,29 @@
         game.floorsKept = savedFloorsKept;
         game.mana = savedMana;
         game.manaFonts = 0;
-        game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
-        game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
+        game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0, aetherFlux: 0, anchoredRituals: 0 };
+        game.active = {
+          boost: 1,
+          boostTD: 1,
+          boostHarvest: 1,
+          timer: 0,
+          duration: 0,
+          cooldown: 0,
+          harvestTimer: 0,
+          harvestDuration: 0,
+          leylineTapTimer: 0,
+          leylineTapPct: 0,
+          runeTimer: 0,
+          runeStacks: 0,
+          focusCondenserTimer: 0,
+          spellCostDiscountTimer: 0,
+          spellCostDiscountPct: 0,
+          overclockTimer: 0,
+          overclockMult: 1,
+          worldweaveTimer: 0,
+          convergenceTimer: 0,
+          paradoxTimer: 0,
+        };
         game.studyCount = 0;
         game.stamina = maxStamina();
         game.wardOfPreservationUsed = false;
@@ -3178,12 +3610,25 @@
         game.relicDraftSeen = false;
         game.sigilStacks = 0;
         game.relicHuntCooldownEnd = 0;
+        game.transmutateCooldownEnd = 0;
+        game.manaSiphonCooldownEnd = 0;
+        game.runeAccretionCooldownEnd = 0;
+        game.staminaTransmuteCooldownEnd = 0;
+        game.focusCondenserCooldownEnd = 0;
+        game.leylineResonanceCooldownEnd = 0;
+        game.towerPulseCooldownEnd = 0;
+        game.chronoLoopCooldownEnd = 0;
+        game.nexusOverclockCooldownEnd = 0;
+        game.worldweaveCooldownEnd = 0;
+        game.convergenceCooldownEnd = 0;
+        game.paradoxCastCooldownEnd = 0;
+        game.nextFloorDiscountPct = 0;
         game.nextFloorDuplicate = null;
         game.nextFloorCursed = false;
         game.nextFloorBonus = false;
-        game.transmutateCooldownEnd = 0;
         game.stats.focusSurgeCasts = 0;
         game.stats.vigorInfusionCasts = 0;
+        game.stats.transmutateCasts = 0;
         renderAll();
         playSound('milestone');
       };
@@ -3310,7 +3755,8 @@
         desc.className = 'desc';
         desc.innerHTML = a.desc + '<br><span class="detail">' + detail + '</span>';
         btn.appendChild(desc);
-        const costAmount = a.costStaminaPct != null ? maxStamina() * a.costStaminaPct : 0;
+        const ritualMult = a.id === 'ritual' ? ritualCostMultiplier() : 1;
+        const costAmount = a.costStaminaPct != null ? maxStamina() * a.costStaminaPct * ritualMult : 0;
         const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
         const onCooldown = a.cooldownMs && (game[cooldownKey] || 0) > Date.now();
         const lowFocus = a.focusCost != null && focus < a.focusCost - EPS;
@@ -3377,8 +3823,16 @@
       const floors = totalFloors();
       const swapReady = canSwapSpell();
 
-      const nextLockedActive = ACTIVE_SPELLS.find(s => floors < s.unlock);
-      const activeToShow = ACTIVE_SPELLS.filter(s => floors >= s.unlock || s === nextLockedActive);
+      const floorLockedActive = ACTIVE_SPELLS.filter(s => !isSpellUnlocked(s, true) && !s.unlockCheck && typeof s.unlock === 'number');
+      floorLockedActive.sort((a, b) => (a.unlock || 0) - (b.unlock || 0));
+      const nextLockedActive = floorLockedActive[0];
+      const activeToShow = ACTIVE_SPELLS.filter(s => isSpellUnlocked(s, true) || s.unlockCheck || s === nextLockedActive);
+      const activeSort = (s) => {
+        if (typeof s.sortKey === 'number') return s.sortKey;
+        if (s.unlockCheck && !isSpellUnlocked(s, true)) return 900;
+        return typeof s.unlock === 'number' ? s.unlock : 999;
+      };
+      activeToShow.sort((a, b) => activeSort(a) - activeSort(b));
 
       const leylineSurgeActive = !!(game.active && game.active.leylineTapTimer > 0);
       activeToShow.forEach(s => {
@@ -3398,11 +3852,12 @@
         wrap.className = 'spell-row';
         const btn = document.createElement('button');
         btn.textContent = s.name;
-        if (floors < s.unlock) {
+        const unlocked = isSpellUnlocked(s, true);
+        if (!unlocked) {
           btn.disabled = true;
           const hint = document.createElement('span');
           hint.className = 'unlock-hint';
-          hint.textContent = 'Unlocks at ' + s.unlock + ' floors';
+          hint.textContent = spellUnlockHint(s);
           hint.style.display = 'block';
           btn.appendChild(hint);
           wrap.appendChild(btn);
@@ -3447,8 +3902,15 @@
         activeSpellsDiv.appendChild(wrap);
       });
 
-      const nextLockedPassive = PASSIVE_SPELLS.find(s => floors < s.unlock);
-      const passiveToShow = PASSIVE_SPELLS.filter(s => floors >= s.unlock || s === nextLockedPassive);
+      const floorLockedPassive = PASSIVE_SPELLS.filter(s => !isSpellUnlocked(s, false) && !s.unlockCheck && typeof s.unlock === 'number');
+      floorLockedPassive.sort((a, b) => (a.unlock || 0) - (b.unlock || 0));
+      const nextLockedPassive = floorLockedPassive[0];
+      const passiveToShow = PASSIVE_SPELLS.filter(s => isSpellUnlocked(s, false) || s.unlockCheck || s === nextLockedPassive);
+      const passiveSort = (s) => {
+        if (s.unlockCheck && !isSpellUnlocked(s, false)) return 900;
+        return typeof s.unlock === 'number' ? s.unlock : 999;
+      };
+      passiveToShow.sort((a, b) => passiveSort(a) - passiveSort(b));
 
       passiveToShow.forEach(s => {
         const spellId = getSpellId(s, false);
@@ -3457,11 +3919,12 @@
         wrap.className = 'spell-row';
         const btn = document.createElement('button');
         btn.textContent = s.name;
-        if (floors < s.unlock) {
+        const unlocked = isSpellUnlocked(s, false);
+        if (!unlocked) {
           btn.disabled = true;
           const hint = document.createElement('span');
           hint.className = 'unlock-hint';
-          hint.textContent = 'Unlocks at ' + s.unlock + ' floors';
+          hint.textContent = spellUnlockHint(s);
           hint.style.display = 'block';
           btn.appendChild(hint);
           wrap.appendChild(btn);
@@ -3507,7 +3970,7 @@
     }
 
     function anyActiveSpellCooldown() {
-      return (game.transmutateCooldownEnd || 0) > Date.now();
+      return activeCooldownCount() > 0;
     }
 
     function towerTier(f) { if (f >= 40) return 4; if (f >= 30) return 3; if (f >= 10) return 2; return 1; }
@@ -3600,8 +4063,29 @@
       game.memorizedSpells = (game.memorizedSpells || []).slice(0, maxSpellSlots());
       game.stairs = 0;
       game.floorsKept = savedFloorsKept;
-      game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
-      game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
+      game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0, aetherFlux: 0, anchoredRituals: 0 };
+      game.active = {
+        boost: 1,
+        boostTD: 1,
+        boostHarvest: 1,
+        timer: 0,
+        duration: 0,
+        cooldown: 0,
+        harvestTimer: 0,
+        harvestDuration: 0,
+        leylineTapTimer: 0,
+        leylineTapPct: 0,
+        runeTimer: 0,
+        runeStacks: 0,
+        focusCondenserTimer: 0,
+        spellCostDiscountTimer: 0,
+        spellCostDiscountPct: 0,
+        overclockTimer: 0,
+        overclockMult: 1,
+        worldweaveTimer: 0,
+        convergenceTimer: 0,
+        paradoxTimer: 0,
+      };
       game.studyCount = studyKept;
       game.stamina = maxStamina();
       game.wardOfPreservationUsed = false;
@@ -3619,6 +4103,7 @@
       game.nextFloorDuplicate = null;
       game.nextFloorCursed = false;
       game.nextFloorBonus = false;
+      game.nextFloorDiscountPct = 0;
       game.stats.timeDilationCasts = 0;
       game.stats.arcaneHarvestCasts = 0;
       game.stats.transmutateCasts = 0;
@@ -3638,7 +4123,7 @@
         else if (Math.random() < 0.12) game.nextFloorBonus = true;
       }
       const cost = effectiveFloorCost();
-      const floorStaminaCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
+      const floorStaminaCost = effectiveFloorStaminaCost();
       const suffix = game.nextFloorCursed ? ' (Cursed: 1.5× cost, 2× effect)' : (game.nextFloorBonus ? ' (Bonus: free)' : '');
       const levelGain = game.nextFloorCursed ? 2 : 1;
       const addCard = (name) => {
@@ -3678,6 +4163,7 @@
             }
             game.nextFloorCursed = false;
             game.nextFloorBonus = false;
+            game.nextFloorDiscountPct = 0;
             game.scryLockedRoom = null;
             roomModal.style.display = 'none';
             renderAll();
@@ -3995,15 +4481,25 @@
       try {
         const data = JSON.parse(raw);
         Object.assign(game, data);
-        if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, transmutateCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
+        if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, transmutateCasts: 0, manaCapHits: 0, zeroManaCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
         if (!game.passive || typeof game.passive !== 'object') game.passive = {};
-        const passiveDefaults = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
+        const passiveDefaults = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0, aetherFlux: 0, anchoredRituals: 0 };
         Object.keys(passiveDefaults).forEach(k => { if (typeof game.passive[k] !== 'number') game.passive[k] = passiveDefaults[k]; });
-        if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
+        if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0, runeTimer: 0, runeStacks: 0, focusCondenserTimer: 0, spellCostDiscountTimer: 0, spellCostDiscountPct: 0, overclockTimer: 0, overclockMult: 1, worldweaveTimer: 0, convergenceTimer: 0, paradoxTimer: 0 };
         if (typeof game.active.boostTD !== 'number') game.active.boostTD = 1;
         if (typeof game.active.boostHarvest !== 'number') game.active.boostHarvest = 1;
         if (typeof game.active.leylineTapTimer !== 'number') game.active.leylineTapTimer = 0;
         if (typeof game.active.leylineTapPct !== 'number') game.active.leylineTapPct = 0;
+        if (typeof game.active.runeTimer !== 'number') game.active.runeTimer = 0;
+        if (typeof game.active.runeStacks !== 'number') game.active.runeStacks = 0;
+        if (typeof game.active.focusCondenserTimer !== 'number') game.active.focusCondenserTimer = 0;
+        if (typeof game.active.spellCostDiscountTimer !== 'number') game.active.spellCostDiscountTimer = 0;
+        if (typeof game.active.spellCostDiscountPct !== 'number') game.active.spellCostDiscountPct = 0;
+        if (typeof game.active.overclockTimer !== 'number') game.active.overclockTimer = 0;
+        if (typeof game.active.overclockMult !== 'number') game.active.overclockMult = 1;
+        if (typeof game.active.worldweaveTimer !== 'number') game.active.worldweaveTimer = 0;
+        if (typeof game.active.convergenceTimer !== 'number') game.active.convergenceTimer = 0;
+        if (typeof game.active.paradoxTimer !== 'number') game.active.paradoxTimer = 0;
         if (typeof game.studyCount !== 'number') game.studyCount = 0;
         if (typeof game.stamina !== 'number') game.stamina = 0;
         if (typeof game.focus !== 'number') game.focus = 0;
@@ -4014,6 +4510,19 @@
         if (typeof game.relicHuntCooldownEnd !== 'number') game.relicHuntCooldownEnd = 0;
         game.relics = (game.relics || []).filter(id => RELIC_BY_ID[id]);
         game.relicDraft = (game.relicDraft || []).filter(id => RELIC_BY_ID[id]);
+        if (typeof game.transmutateCooldownEnd !== 'number') game.transmutateCooldownEnd = 0;
+        if (typeof game.manaSiphonCooldownEnd !== 'number') game.manaSiphonCooldownEnd = 0;
+        if (typeof game.runeAccretionCooldownEnd !== 'number') game.runeAccretionCooldownEnd = 0;
+        if (typeof game.staminaTransmuteCooldownEnd !== 'number') game.staminaTransmuteCooldownEnd = 0;
+        if (typeof game.focusCondenserCooldownEnd !== 'number') game.focusCondenserCooldownEnd = 0;
+        if (typeof game.leylineResonanceCooldownEnd !== 'number') game.leylineResonanceCooldownEnd = 0;
+        if (typeof game.towerPulseCooldownEnd !== 'number') game.towerPulseCooldownEnd = 0;
+        if (typeof game.chronoLoopCooldownEnd !== 'number') game.chronoLoopCooldownEnd = 0;
+        if (typeof game.nexusOverclockCooldownEnd !== 'number') game.nexusOverclockCooldownEnd = 0;
+        if (typeof game.worldweaveCooldownEnd !== 'number') game.worldweaveCooldownEnd = 0;
+        if (typeof game.convergenceCooldownEnd !== 'number') game.convergenceCooldownEnd = 0;
+        if (typeof game.paradoxCastCooldownEnd !== 'number') game.paradoxCastCooldownEnd = 0;
+        if (typeof game.nextFloorDiscountPct !== 'number') game.nextFloorDiscountPct = 0;
         if (typeof game.transmutateCooldownEnd !== 'number') game.transmutateCooldownEnd = 0;
         if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
         if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
@@ -4026,6 +4535,7 @@
         if (typeof game.tutorial.settingsOpened !== 'boolean') game.tutorial.settingsOpened = false;
         if (typeof game.tutorial.keysSeen !== 'boolean') game.tutorial.keysSeen = false;
         if (typeof game.tutorial.glossarySeen !== 'boolean') game.tutorial.glossarySeen = false;
+        if (typeof game.wasManaCapped !== 'boolean') game.wasManaCapped = false;
         if (typeof game.paragonSpent.focus !== 'number') game.paragonSpent.focus = 0;
         if (game.prestigeTokenChoice !== 'font' && game.prestigeTokenChoice !== 'study' && game.prestigeTokenChoice !== 'relic') game.prestigeTokenChoice = null;
         capMana();
@@ -4080,20 +4590,30 @@
         delete game.rooms;
         delete game.floors;
       }
-      const statDefaults = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, transmutateCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, totalFloorsEver: 0, totalStaminaSpent: 0, maxFloorsReached: 0, maxManaPerSecReached: 0 };
+      const statDefaults = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, transmutateCasts: 0, manaCapHits: 0, zeroManaCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, totalFloorsEver: 0, totalStaminaSpent: 0, maxFloorsReached: 0, maxManaPerSecReached: 0 };
       if (!game.stats) game.stats = { ...statDefaults, achievements: [] };
       Object.keys(statDefaults).forEach(k => { if (typeof game.stats[k] !== 'number') game.stats[k] = statDefaults[k]; });
       if (!Array.isArray(game.stats.achievements)) game.stats.achievements = [];
       if (!game.passive || typeof game.passive !== 'object') game.passive = {};
-      const passiveDefaults = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
+      const passiveDefaults = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0, aetherFlux: 0, anchoredRituals: 0 };
       Object.keys(passiveDefaults).forEach(k => { if (typeof game.passive[k] !== 'number') game.passive[k] = passiveDefaults[k]; });
-      if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
+      if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0, runeTimer: 0, runeStacks: 0, focusCondenserTimer: 0, spellCostDiscountTimer: 0, spellCostDiscountPct: 0, overclockTimer: 0, overclockMult: 1, worldweaveTimer: 0, convergenceTimer: 0, paradoxTimer: 0 };
       if (typeof game.active.boostTD !== 'number') game.active.boostTD = 1;
       if (typeof game.active.boostHarvest !== 'number') game.active.boostHarvest = 1;
       if (typeof game.active.harvestTimer !== 'number') game.active.harvestTimer = 0;
       if (typeof game.active.harvestDuration !== 'number') game.active.harvestDuration = 0;
       if (typeof game.active.leylineTapTimer !== 'number') game.active.leylineTapTimer = 0;
       if (typeof game.active.leylineTapPct !== 'number') game.active.leylineTapPct = 0;
+      if (typeof game.active.runeTimer !== 'number') game.active.runeTimer = 0;
+      if (typeof game.active.runeStacks !== 'number') game.active.runeStacks = 0;
+      if (typeof game.active.focusCondenserTimer !== 'number') game.active.focusCondenserTimer = 0;
+      if (typeof game.active.spellCostDiscountTimer !== 'number') game.active.spellCostDiscountTimer = 0;
+      if (typeof game.active.spellCostDiscountPct !== 'number') game.active.spellCostDiscountPct = 0;
+      if (typeof game.active.overclockTimer !== 'number') game.active.overclockTimer = 0;
+      if (typeof game.active.overclockMult !== 'number') game.active.overclockMult = 1;
+      if (typeof game.active.worldweaveTimer !== 'number') game.active.worldweaveTimer = 0;
+      if (typeof game.active.convergenceTimer !== 'number') game.active.convergenceTimer = 0;
+      if (typeof game.active.paradoxTimer !== 'number') game.active.paradoxTimer = 0;
       if (typeof game.softPrestige !== 'number') game.softPrestige = 0;
       if (typeof game.ascension !== 'number') game.ascension = 0;
       if (typeof game.studyCount !== 'number') game.studyCount = 0;
@@ -4107,6 +4627,18 @@
       game.relics = (game.relics || []).filter(id => RELIC_BY_ID[id]);
       game.relicDraft = (game.relicDraft || []).filter(id => RELIC_BY_ID[id]);
       if (typeof game.transmutateCooldownEnd !== 'number') game.transmutateCooldownEnd = 0;
+      if (typeof game.manaSiphonCooldownEnd !== 'number') game.manaSiphonCooldownEnd = 0;
+      if (typeof game.runeAccretionCooldownEnd !== 'number') game.runeAccretionCooldownEnd = 0;
+      if (typeof game.staminaTransmuteCooldownEnd !== 'number') game.staminaTransmuteCooldownEnd = 0;
+      if (typeof game.focusCondenserCooldownEnd !== 'number') game.focusCondenserCooldownEnd = 0;
+      if (typeof game.leylineResonanceCooldownEnd !== 'number') game.leylineResonanceCooldownEnd = 0;
+      if (typeof game.towerPulseCooldownEnd !== 'number') game.towerPulseCooldownEnd = 0;
+      if (typeof game.chronoLoopCooldownEnd !== 'number') game.chronoLoopCooldownEnd = 0;
+      if (typeof game.nexusOverclockCooldownEnd !== 'number') game.nexusOverclockCooldownEnd = 0;
+      if (typeof game.worldweaveCooldownEnd !== 'number') game.worldweaveCooldownEnd = 0;
+      if (typeof game.convergenceCooldownEnd !== 'number') game.convergenceCooldownEnd = 0;
+      if (typeof game.paradoxCastCooldownEnd !== 'number') game.paradoxCastCooldownEnd = 0;
+      if (typeof game.nextFloorDiscountPct !== 'number') game.nextFloorDiscountPct = 0;
       if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
       if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
       ensureKeybinds();
@@ -4146,6 +4678,17 @@
         if (game.ritualActivityCooldownEnd > 0) game.ritualActivityCooldownEnd = Math.max(now, (game.ritualActivityCooldownEnd || now) - cooldownTick);
         if (game.relicHuntCooldownEnd > 0) game.relicHuntCooldownEnd = Math.max(now, (game.relicHuntCooldownEnd || now) - cooldownTick);
         if (game.transmutateCooldownEnd > 0) game.transmutateCooldownEnd = Math.max(now, (game.transmutateCooldownEnd || now) - cooldownTick);
+        if (game.manaSiphonCooldownEnd > 0) game.manaSiphonCooldownEnd = Math.max(now, (game.manaSiphonCooldownEnd || now) - cooldownTick);
+        if (game.runeAccretionCooldownEnd > 0) game.runeAccretionCooldownEnd = Math.max(now, (game.runeAccretionCooldownEnd || now) - cooldownTick);
+        if (game.staminaTransmuteCooldownEnd > 0) game.staminaTransmuteCooldownEnd = Math.max(now, (game.staminaTransmuteCooldownEnd || now) - cooldownTick);
+        if (game.focusCondenserCooldownEnd > 0) game.focusCondenserCooldownEnd = Math.max(now, (game.focusCondenserCooldownEnd || now) - cooldownTick);
+        if (game.leylineResonanceCooldownEnd > 0) game.leylineResonanceCooldownEnd = Math.max(now, (game.leylineResonanceCooldownEnd || now) - cooldownTick);
+        if (game.towerPulseCooldownEnd > 0) game.towerPulseCooldownEnd = Math.max(now, (game.towerPulseCooldownEnd || now) - cooldownTick);
+        if (game.chronoLoopCooldownEnd > 0) game.chronoLoopCooldownEnd = Math.max(now, (game.chronoLoopCooldownEnd || now) - cooldownTick);
+        if (game.nexusOverclockCooldownEnd > 0) game.nexusOverclockCooldownEnd = Math.max(now, (game.nexusOverclockCooldownEnd || now) - cooldownTick);
+        if (game.worldweaveCooldownEnd > 0) game.worldweaveCooldownEnd = Math.max(now, (game.worldweaveCooldownEnd || now) - cooldownTick);
+        if (game.convergenceCooldownEnd > 0) game.convergenceCooldownEnd = Math.max(now, (game.convergenceCooldownEnd || now) - cooldownTick);
+        if (game.paradoxCastCooldownEnd > 0) game.paradoxCastCooldownEnd = Math.max(now, (game.paradoxCastCooldownEnd || now) - cooldownTick);
         if (dtMs >= 5 * 60 * 1000) {
           showOfflineProgress(gained, staminaGain, focusGain, dtMs);
         } else {
@@ -4206,6 +4749,14 @@
       const gained = mps * Math.min(dt, TICK / 1000 * 2);
       game.mana = Math.min(game.mana + gained, maxMana());
       game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gained;
+      const manaCap = maxMana();
+      const atCap = game.mana >= manaCap * 0.999;
+      if (atCap && !game.wasManaCapped) {
+        game.stats.manaCapHits = (game.stats.manaCapHits || 0) + 1;
+        game.wasManaCapped = true;
+      } else if (!atCap) {
+        game.wasManaCapped = false;
+      }
 
       const sps = staminaPerSecond();
       const staminaGain = sps * Math.min(dt, TICK / 1000 * 2);
@@ -4233,6 +4784,40 @@
       if (game.active.leylineTapTimer > 0) {
         game.active.leylineTapTimer -= dt;
         if (game.active.leylineTapTimer <= 0) game.active.leylineTapPct = 0;
+      }
+      if (game.active.runeTimer > 0) {
+        game.active.runeTimer -= dt;
+        if (game.active.runeTimer <= 0) game.active.runeStacks = 0;
+      }
+      if (game.active.focusCondenserTimer > 0) {
+        game.active.focusCondenserTimer -= dt;
+        if (game.active.focusCondenserTimer < 0) game.active.focusCondenserTimer = 0;
+      }
+      if (game.active.spellCostDiscountTimer > 0) {
+        game.active.spellCostDiscountTimer -= dt;
+        if (game.active.spellCostDiscountTimer <= 0) game.active.spellCostDiscountPct = 0;
+      }
+      const hadOverclock = game.active.overclockTimer > 0;
+      if (game.active.overclockTimer > 0) {
+        game.active.overclockTimer -= dt;
+        if (game.active.overclockTimer <= 0) {
+          game.active.overclockMult = 1;
+        }
+      }
+      if (hadOverclock && game.active.overclockTimer <= 0) {
+        game.exhaustedUntil = Math.max(game.exhaustedUntil || 0, Date.now() + 180 * 1000);
+      }
+      if (game.active.worldweaveTimer > 0) {
+        game.active.worldweaveTimer -= dt;
+        if (game.active.worldweaveTimer < 0) game.active.worldweaveTimer = 0;
+      }
+      if (game.active.convergenceTimer > 0) {
+        game.active.convergenceTimer -= dt;
+        if (game.active.convergenceTimer < 0) game.active.convergenceTimer = 0;
+      }
+      if (game.active.paradoxTimer > 0) {
+        game.active.paradoxTimer -= dt;
+        if (game.active.paradoxTimer < 0) game.active.paradoxTimer = 0;
       }
       if (hadActiveSpell && game.active.timer <= 0 && game.active.harvestTimer <= 0 && game.active.leylineTapTimer <= 0) renderSpells();
 
