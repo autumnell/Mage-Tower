@@ -1,0 +1,3395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mage Tower Idle</title>
+  <style>
+    :root {
+      --bg-deep: #0c0e14;
+      --bg-panel: #12161e;
+      --bg-card: #181c28;
+      --bg-elevated: #1e2432;
+      --border: #2a3040;
+      --border-focus: #3d4558;
+      --text: #e2e4ec;
+      --text-muted: #7c8498;
+      --accent: #7c9cf4;
+      --accent-dim: rgba(124, 156, 244, 0.12);
+      --accent-glow: rgba(124, 156, 244, 0.28);
+      --stamina: #d4a574;
+      --focus-color: #a5b8e8;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+      --shadow-glow: 0 0 18px rgba(124, 156, 244, 0.12);
+      --radius: 10px;
+      --radius-sm: 6px;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --toast-bg: var(--bg-card);
+      --toast-border: var(--accent);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.45;
+      letter-spacing: 0.01em;
+      background: var(--bg-deep);
+      color: var(--text);
+      margin: 0;
+      display: flex;
+      min-height: 100vh;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+    button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 12px 16px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: background 0.2s, border-color 0.2s, transform 0.1s;
+      position: relative;
+      font-family: inherit;
+      font-size: 0.95em;
+      font-weight: 600;
+    }
+    button:hover:not(:disabled) {
+      background: var(--border-focus);
+      border-color: var(--border-focus);
+    }
+    button:active:not(:disabled) { transform: scale(0.99); }
+    button:disabled { background: #1a1520; border-color: transparent; opacity: 0.6; cursor: not-allowed; }
+
+    .tooltip {
+      visibility: hidden;
+      opacity: 0;
+      width: 280px;
+      max-width: calc(100% - 8px);
+      background: var(--bg-elevated);
+      color: var(--text);
+      text-align: left;
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 8px);
+      left: 4px;
+      transition: opacity 0.2s;
+      font-size: 0.88em;
+      line-height: 1.4;
+      pointer-events: none;
+      white-space: pre-line;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    button .desc { display: block; font-size: 0.82em; opacity: 0.8; margin-top: 4px; font-weight: 500; }
+    button .desc .detail { display: block; margin-top: 6px; opacity: 0.9; }
+    .unlock-hint { font-size: 0.78em; opacity: 0.75; margin-top: 4px; color: var(--text-muted); }
+    .stat { margin: 8px 0; font-size: 0.95em; }
+    .cost { font-size: 0.88em; opacity: 0.8; display: block; color: var(--text-muted); margin-top: 2px; }
+    .section-divider { margin: 20px 0; height: 1px; background: var(--border); }
+
+    .spell-status {
+      margin: 10px 0 6px;
+      padding: 12px 14px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .spell-status .row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    .spell-status .label { font-weight: 600; }
+    .spell-status .sub { font-size: 0.88em; opacity: 0.85; }
+    .progress {
+      height: 8px;
+      background: var(--bg-deep);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 8px;
+      border: 1px solid var(--border);
+    }
+    .progress > .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #8ba3f0);
+      transition: width 0.1s linear;
+    }
+
+    #towerContainer { display: flex; flex-direction: column; align-items: center; position: relative; }
+    .tower-block {
+      width: 104px;
+      height: 48px;
+      margin-top: 4px;
+      border-radius: var(--radius-sm);
+      position: relative;
+      opacity: 1;
+      transition: transform 0.15s;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+    }
+    /* tier tapering (keeps blocky silhouette but feels “designed”) */
+    .tower-block.tier-1 { width: 112px; }
+    .tower-block.tier-2 { width: 106px; }
+    .tower-block.tier-3 { width: 100px; }
+    .tower-block.tier-4 { width: 94px; }
+    .tower-block::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02) 26%, rgba(0,0,0,0.08)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 2px, rgba(0,0,0,0.00) 2px 8px),
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.14) 0 1px, rgba(0,0,0,0.00) 1px 10px);
+      opacity: 0.9;
+      pointer-events: none;
+      mix-blend-mode: overlay;
+    }
+    .tower-block::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(0,0,0,0.14), rgba(0,0,0,0.00) 30%, rgba(255,255,255,0.05) 55%, rgba(0,0,0,0.18));
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .tower-windows {
+      position: absolute;
+      inset: 10px 10px 14px 10px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      opacity: 0.7;
+      pointer-events: none;
+      filter: drop-shadow(0 0 8px rgba(124, 156, 244, 0.08));
+    }
+    .tower-window {
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: radial-gradient(circle at 40% 30%, rgba(124,156,244,0.20), rgba(0,0,0,0.35));
+    }
+    .tower-block.tier-1 .tower-window { opacity: 0.55; }
+    .tower-block.tier-2 .tower-window { opacity: 0.65; }
+    .tower-block.tier-3 .tower-window { opacity: 0.75; }
+    .tower-block.tier-4 .tower-window { opacity: 0.85; }
+
+    .tower-topper {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 10px);
+      height: 14px;
+      pointer-events: none;
+    }
+    .tower-crenel {
+      position: absolute;
+      inset: 0;
+      border-radius: 6px 6px 0 0;
+      background:
+        repeating-linear-gradient(90deg,
+          rgba(0,0,0,0.00) 0 6px,
+          rgba(0,0,0,0.28) 6px 10px),
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.22));
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 8px 14px rgba(0,0,0,0.25);
+    }
+    .tower-turrets {
+      position: absolute;
+      inset: -2px 0 0 0;
+      pointer-events: none;
+    }
+    .tower-turrets .turret {
+      position: absolute;
+      top: 0;
+      width: 18px;
+      height: 18px;
+      border-radius: 6px 6px 4px 4px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.20));
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 8px 14px rgba(0,0,0,0.25);
+    }
+    .tower-turrets .turret.left { left: -8px; }
+    .tower-turrets .turret.right { right: -8px; }
+    .tower-turrets .turret::after {
+      content: "";
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 16px;
+      height: 10px;
+      border-radius: 6px 6px 0 0;
+      background:
+        repeating-linear-gradient(90deg,
+          rgba(0,0,0,0.00) 0 5px,
+          rgba(0,0,0,0.30) 5px 8px),
+        linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.22));
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .tower-block.tick-pulse { animation: tickPulse 0.3s ease-out; }
+    .tower-block.side-left { transform: translateX(-30px); margin-right: -30px; }
+    .tower-block.side-right { transform: translateX(30px); margin-left: -30px; }
+    @keyframes tickPulse { 0% { filter: brightness(1); } 50% { filter: brightness(1.2); } 100% { filter: brightness(1); } }
+    .room {
+      position: absolute;
+      bottom: 6px;
+      width: 100%;
+      text-align: center;
+      font-size: 0.66em;
+      font-weight: 600;
+      text-shadow: none;
+      letter-spacing: 0.02em;
+      color: rgba(226, 228, 236, 0.78);
+      opacity: 0;
+      transform: translateY(2px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      pointer-events: none;
+    }
+    .tower-block:hover .room { opacity: 0.95; transform: translateY(0); }
+    .boost-number { position: absolute; color: var(--accent); font-size: 0.9em; font-weight: bold; animation: floatUp 1.2s forwards; pointer-events: none; text-shadow: 0 0 12px var(--accent-glow); }
+    .boost-number.crit { color: #e9d5a0; text-shadow: 0 0 10px rgba(233, 213, 160, 0.4); }
+    .click-ripple {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 2px solid var(--accent-glow);
+      box-shadow: 0 0 18px var(--accent-glow);
+      pointer-events: none;
+      animation: ripple 520ms ease-out forwards;
+      transform: translate(-50%, -50%);
+    }
+    @keyframes ripple {
+      from { opacity: 0.9; transform: translate(-50%, -50%) scale(0.7); }
+      to { opacity: 0; transform: translate(-50%, -50%) scale(3.2); }
+    }
+    @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
+    .tier-1 { background: linear-gradient(180deg, #5a6a9e 0%, #2d3550 100%); }
+    .tier-2 { background: linear-gradient(180deg, #4a7a9e 0%, #2d4050 100%); }
+    .tier-3 { background: linear-gradient(180deg, #8e7a5a 0%, #50402d 100%); }
+    .tier-4 { background: linear-gradient(180deg, #6a5a8e 0%, #403550 100%); }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 6, 18, 0.88);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      background: var(--bg-panel);
+      padding: 24px;
+      border-radius: var(--radius);
+      max-width: 600px;
+      width: 90%;
+      max-height: 85%;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow), 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+    #roomModal .modal-content { max-height: 92%; padding-bottom: 140px; display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+    .intro-content { max-width: 520px; }
+    .intro-content h3 { margin-top: 0; color: var(--accent); }
+    .intro-lore, .intro-how { margin: 14px 0; font-size: 0.95em; line-height: 1.5; color: var(--text-muted); }
+    .intro-how ul { margin: 8px 0 0 16px; padding-left: 8px; }
+    .intro-how li { margin: 6px 0; }
+    #introCloseBtn { margin-top: 12px; }
+    .room-detail-content { max-width: 380px; position: relative; }
+    .room-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .room-detail-header h3 { margin: 0; font-size: 1.2em; color: var(--accent); flex: 1; }
+    .room-detail-close {
+      flex-shrink: 0; width: 32px; height: 32px; padding: 0; margin: -4px -4px 0 0;
+      background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text);
+      border-radius: var(--radius-sm); cursor: pointer; font-size: 1.4em; line-height: 1; display: flex; align-items: center; justify-content: center;
+    }
+    .room-detail-close:hover { background: var(--border-focus); border-color: var(--border-focus); }
+    .room-detail-desc { margin: 0 0 12px; font-size: 0.92em; color: var(--text-muted); line-height: 1.45; }
+    .room-detail-level { margin: 0 0 14px; font-size: 0.9em; }
+    .room-detail-upgrade { margin-top: 4px; }
+
+    .room-card {
+      background: var(--bg-card);
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      width: 148px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      border: 1px solid var(--border);
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      font-weight: 600;
+      font-size: 0.92em;
+    }
+    .room-card:hover:not(.disabled) { border-color: var(--accent); background: var(--bg-elevated); transform: translateY(-2px); }
+    .room-card.disabled { opacity: 0.5; cursor: not-allowed; }
+    .room-card:hover .tooltip { visibility: visible; opacity: 1; }
+    .room-card .unlock-hint { display: block; margin-top: 6px; }
+
+    #toastContainer {
+      position: fixed;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--toast-bg);
+      border: 1px solid var(--toast-border);
+      color: var(--text);
+      padding: 14px 22px;
+      border-radius: var(--radius-sm);
+      font-size: 0.92em;
+      animation: toastIn 0.35s ease-out;
+      white-space: nowrap;
+      max-width: 92vw;
+      box-shadow: var(--shadow);
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .toast-title { font-weight: 700; margin-bottom: 4px; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px; margin: 14px 0; font-size: 0.92em; }
+    .stats-grid span { opacity: 0.95; }
+    .stats-grid .value { font-weight: 600; color: var(--accent); }
+
+    body { flex-direction: column; min-height: 100vh; }
+    #topBar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 14px 24px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      min-height: 58px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+    }
+    #topBar .resources { display: flex; align-items: flex-start; gap: 28px; font-size: 1.05em; flex-wrap: wrap; }
+    #topBar .resource-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px 12px;
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    #topBar .resource-block .main { font-weight: 700; font-size: 1.02em; }
+    #topBar .resource-block .main.mana { color: var(--accent); }
+    #topBar .resource-block .main.stamina { color: var(--stamina); }
+    #topBar .resource-block .main.focus { color: var(--focus-color); }
+    .exhausted-hint { font-size: 0.85em; color: var(--text-muted); margin-top: 4px; }
+    #topBar .resource-block .sub { font-size: 0.88em; opacity: 0.88; color: var(--text-muted); }
+    #topBar .spell-status-inline { display: flex; align-items: center; gap: 10px; font-size: 0.9em; opacity: 0.95; }
+    .mini-progress {
+      height: 6px;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: 4px;
+    }
+    .mini-progress > .mini-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #8ba3f0);
+      transition: width 0.12s linear;
+    }
+    .mini-progress.stamina > .mini-fill { background: linear-gradient(90deg, var(--stamina), #e9c89a); }
+    .mini-progress.focus > .mini-fill { background: linear-gradient(90deg, var(--focus-color), var(--accent)); }
+    #goalBar {
+      width: 100%;
+      padding: 10px 24px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(124, 156, 244, 0.06);
+    }
+    .goal-hint {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.88em;
+      line-height: 1.4;
+      text-align: center;
+    }
+    .goal-hint strong { color: var(--text); font-weight: 700; }
+    .goal-hint .k { color: var(--accent); font-weight: 700; }
+    .goal-hint .muted { color: var(--text-muted); opacity: 0.85; }
+    #main {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      background: radial-gradient(ellipse 120% 100% at 50% 100%, #151020 0%, var(--bg-deep) 55%);
+      position: relative;
+      overflow: hidden;
+      min-height: 0;
+    }
+    /* subtle animated “stars” */
+    #main::before, #main::after {
+      content: "";
+      position: absolute;
+      inset: -40% -20%;
+      pointer-events: none;
+      opacity: 0.3;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(124,156,244,0.12) 0 1px, transparent 2px),
+        radial-gradient(circle at 70% 20%, rgba(100,140,220,0.1) 0 1px, transparent 2px),
+        radial-gradient(circle at 55% 75%, rgba(160,180,230,0.08) 0 1px, transparent 2px),
+        radial-gradient(circle at 35% 60%, rgba(124,156,244,0.06) 0 1px, transparent 2px),
+        radial-gradient(circle at 85% 65%, rgba(100,140,220,0.05) 0 1px, transparent 2px);
+      filter: blur(0.2px);
+      transform: translateZ(0);
+      animation: drift 18s linear infinite;
+    }
+    #main::after { opacity: 0.18; animation-duration: 28s; animation-direction: reverse; }
+    @keyframes drift { from { transform: translate3d(0,0,0); } to { transform: translate3d(8%, 6%, 0); } }
+    #main #towerContainer { margin-bottom: 80px; }
+    #bottomNav {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      padding: 0;
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+    }
+    #bottomNav .tab {
+      flex: 1;
+      max-width: 200px;
+      padding: 14px 18px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 3px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-family: inherit;
+    }
+    #bottomNav .tab .tab-icon { width: 26px; height: 26px; flex-shrink: 0; opacity: 0.9; }
+    #bottomNav .tab .tab-badge {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(124, 156, 244, 0.3);
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), var(--accent));
+      box-shadow: 0 0 12px var(--accent-glow);
+      margin-left: 8px;
+      flex: 0 0 auto;
+    }
+    #bottomNav .tab.has-badge .tab-badge { display: inline-flex; }
+    #bottomNav .tab:hover { color: var(--text); background: var(--accent-dim); }
+    #bottomNav .tab:hover .tab-icon { opacity: 1; }
+    #bottomNav .tab.active { color: var(--accent); background: var(--accent-dim); border-bottom-color: var(--accent); }
+    #bottomNav .tab.active .tab-icon { opacity: 1; filter: drop-shadow(0 0 8px var(--accent-glow)); }
+    #bottomNav .tab.tab-locked { opacity: 0.5; cursor: not-allowed; pointer-events: auto; }
+    #bottomNav .tab.tab-locked:hover { color: var(--text-muted); background: transparent; }
+    #bottomNav .tab.tab-locked:hover .tab-icon { opacity: 0.9; filter: none; }
+    .panel-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); display: none; align-items: center; justify-content: center; z-index: 15; backdrop-filter: blur(6px); }
+    .panel-modal.show { display: flex; }
+    .panel-modal .panel-content {
+      background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-deep) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      max-width: 520px;
+      width: 94%;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow), var(--shadow-glow), 0 0 60px rgba(0, 0, 0, 0.5);
+    }
+    .panel-modal .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-modal .panel-header h2 { margin: 0; font-size: 1.4em; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; }
+    .panel-modal .panel-close {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 1.3em;
+      line-height: 1;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .panel-modal .panel-close:hover { background: var(--border-focus); border-color: var(--border-focus); }
+    .panel-modal .section-title { font-size: 0.9em; color: var(--text-muted); margin: 18px 0 10px; font-weight: 600; }
+    .grimoire-slots-stat { font-weight: 600; margin-bottom: 6px; font-size: 0.95em; }
+    .grimoire-swap-timer { font-size: 0.88em; color: var(--text-muted); margin-bottom: 14px; }
+    .spell-row { display: flex; gap: 10px; align-items: stretch; margin-bottom: 8px; }
+    .spell-row > button:first-child { flex: 1; }
+    .spell-row .spell-slot-btn { flex: 0 0 auto; width: auto; min-width: 80px; }
+    .panel-modal .section-title:first-of-type { margin-top: 0; }
+    .floors-stat .value { color: var(--accent); font-weight: 700; }
+    .panel-modal .stat { padding: 6px 0; }
+
+    #settingsBtn {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-sm);
+      font-size: 1.2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    #settingsBtn:hover { background: var(--border-focus); border-color: var(--border-focus); }
+
+    .settings-content { max-width: 420px; }
+    .settings-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+    }
+    .settings-header h2 { margin: 0; font-size: 1.35em; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; }
+    .settings-close {
+      width: 36px; height: 36px; padding: 0; margin: 0;
+      background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text);
+      border-radius: var(--radius-sm); cursor: pointer; font-size: 1.35em; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .settings-close:hover { background: var(--border-focus); border-color: var(--border-focus); }
+    .settings-section { margin-bottom: 20px; }
+    .settings-section:last-child { margin-bottom: 0; }
+    .settings-section-title {
+      font-size: 0.8em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-muted); margin: 0 0 10px 0;
+    }
+    .settings-row { margin: 0; }
+    .settings-toggle { margin-top: 4px; }
+    .settings-label {
+      display: flex; align-items: center; gap: 12px; cursor: pointer;
+      padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); transition: border-color 0.2s, background 0.2s;
+    }
+    .settings-label:hover { border-color: var(--border-focus); background: var(--bg-elevated); }
+    .settings-checkbox {
+      width: 20px; height: 20px; margin: 0; accent-color: var(--accent);
+      cursor: pointer; flex-shrink: 0;
+    }
+    .settings-toggle-text { font-weight: 500; font-size: 0.95em; }
+    .settings-content .settings-btn {
+      width: 100%; margin: 6px 0 0 0; padding: 12px 16px;
+      font-size: 0.95em; text-align: left;
+    }
+    .settings-content .settings-btn:first-of-type { margin-top: 0; }
+    .settings-section .settings-btn + .settings-btn { margin-top: 8px; }
+    .settings-tabs {
+      display: flex;
+      gap: 8px;
+      margin: -8px 0 14px;
+    }
+    .settings-tab {
+      width: auto;
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .settings-tab:hover { background: var(--bg-elevated); color: var(--text); }
+    .settings-tab.active {
+      color: var(--text);
+      border-color: rgba(124, 156, 244, 0.35);
+      box-shadow: 0 0 0 3px rgba(124, 156, 244, 0.10);
+    }
+    .settings-page { display: block; }
+    .settings-page.hidden { display: none; }
+    .keybinds-list {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+    .kb-row {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .kb-row:last-child { border-bottom: none; }
+    .kb-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: var(--bg-elevated);
+      color: var(--text);
+      font-weight: 800;
+      font-size: 0.9em;
+      letter-spacing: 0.02em;
+    }
+    .kb-desc { color: var(--text-muted); font-size: 0.95em; }
+    .settings-section-danger .settings-section-title { color: #b08080; }
+    .settings-btn-danger {
+      border-color: rgba(180, 100, 100, 0.4); color: #e0b0b0;
+    }
+    .settings-btn-danger:hover:not(:disabled) {
+      background: rgba(140, 70, 70, 0.2); border-color: #a05050;
+    }
+    .settings-section-dev .settings-section-title { color: var(--text-muted); opacity: 0.8; }
+    .settings-btn-dev { opacity: 0.85; font-size: 0.9em; }
+    .game-title {
+      margin: 0;
+      font-size: 1.15em;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    @media (max-width: 520px) {
+      .game-title { font-size: 1em; }
+      #topBar { padding: 10px 14px; gap: 10px; }
+      #topBar .resource-block { padding: 4px 8px; font-size: 0.95em; }
+      #goalBar { padding: 8px 14px; }
+      .goal-hint { font-size: 0.82em; }
+      .panel-modal .panel-content { padding: 20px; }
+    }
+
+    /* ===== POLISH: Resource full glow effect ===== */
+    .resource-block.resource-full {
+      animation: resourceFullPulse 2s ease-in-out infinite;
+      border-color: var(--accent);
+    }
+    .resource-block.resource-full.mana-block { border-color: var(--accent); }
+    .resource-block.resource-full.stamina-block { border-color: var(--stamina); }
+    .resource-block.resource-full.focus-block { border-color: var(--focus-color); }
+    @keyframes resourceFullPulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(124, 156, 244, 0.15); }
+      50% { box-shadow: 0 0 16px rgba(124, 156, 244, 0.35); }
+    }
+    .resource-block.resource-full.stamina-block {
+      animation-name: staminaFullPulse;
+    }
+    @keyframes staminaFullPulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(212, 165, 116, 0.15); }
+      50% { box-shadow: 0 0 16px rgba(212, 165, 116, 0.35); }
+    }
+    .resource-block.resource-full.focus-block {
+      animation-name: focusFullPulse;
+    }
+    @keyframes focusFullPulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(165, 184, 232, 0.15); }
+      50% { box-shadow: 0 0 16px rgba(165, 184, 232, 0.35); }
+    }
+
+    /* ===== POLISH: Better button feedback ===== */
+    button:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    button:not(:disabled):active {
+      transform: translateY(0) scale(0.98);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    button.btn-highlight {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      animation: btnHighlightPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes btnHighlightPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(124, 156, 244, 0.4); }
+      50% { box-shadow: 0 0 0 4px rgba(124, 156, 244, 0.1); }
+    }
+
+    /* ===== POLISH: Cooldown overlay on buttons ===== */
+    button .cooldown-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--focus-color));
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      transition: width 0.1s linear;
+      pointer-events: none;
+    }
+    button .cooldown-text {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      font-size: 0.72em;
+      font-weight: 700;
+      color: var(--accent);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    /* ===== POLISH: Unlock pulse animation ===== */
+    .just-unlocked {
+      animation: unlockPulse 0.6s ease-out;
+    }
+    @keyframes unlockPulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(124, 156, 244, 0.6); }
+      50% { transform: scale(1.02); box-shadow: 0 0 20px 4px rgba(124, 156, 244, 0.4); }
+      100% { transform: scale(1); box-shadow: none; }
+    }
+
+    /* ===== POLISH: Auto-save indicator ===== */
+    #saveIndicator {
+      position: fixed;
+      bottom: 70px;
+      right: 16px;
+      font-size: 0.75em;
+      color: var(--text-muted);
+      opacity: 0.7;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 5;
+    }
+    #saveIndicator.saving {
+      color: var(--accent);
+      opacity: 1;
+    }
+    #saveIndicator.saving::after {
+      content: " ...";
+      animation: savingDots 1s steps(3, end) infinite;
+    }
+    @keyframes savingDots {
+      0% { content: " ."; }
+      33% { content: " .."; }
+      66% { content: " ..."; }
+    }
+
+    /* ===== POLISH: Upgrade preview tooltip ===== */
+    .upgrade-preview {
+      font-size: 0.82em;
+      color: #8fcf8f;
+      margin-top: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    button:hover .upgrade-preview {
+      opacity: 1;
+    }
+
+    /* ===== POLISH: Offline progress modal ===== */
+    .offline-modal {
+      text-align: center;
+    }
+    .offline-modal h3 {
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .offline-gains {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      margin: 16px 0;
+    }
+    .offline-gains .gain-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .offline-gains .gain-row:last-child {
+      border-bottom: none;
+    }
+    .offline-gains .gain-value {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .offline-gains .gain-value.stamina {
+      color: var(--stamina);
+    }
+    .offline-gains .gain-value.focus {
+      color: var(--focus-color);
+    }
+
+    /* ===== POLISH: Tab notification dot ===== */
+    #bottomNav .tab .notification-dot {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: notifyPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes notifyPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.8); }
+    }
+
+    /* ===== POLISH: Smooth number transitions ===== */
+    .animated-number {
+      transition: color 0.15s ease;
+    }
+    .animated-number.increasing {
+      color: #8fcf8f;
+    }
+    .animated-number.decreasing {
+      color: #cf8f8f;
+    }
+  </style>
+</head>
+<body>
+  <header id="topBar">
+    <h1 class="game-title" aria-hidden="true">Mage Tower</h1>
+    <div class="resources">
+      <div id="manaBlock" class="resource-block mana-block">
+        <span class="main mana">Mana: <span id="mana">0</span> / <span id="manaMax">1000</span></span>
+        <span class="sub">Mana/sec: <span id="manaPerSec">0</span></span>
+        <div class="mini-progress" aria-hidden="true"><div id="manaFill" class="mini-fill"></div></div>
+      </div>
+      <div id="staminaBlock" class="resource-block stamina-block">
+        <span class="main stamina">Stamina: <span id="stamina">0</span> / <span id="staminaMax">100</span></span>
+        <span class="sub">Stamina/sec: <span id="staminaPerSec">0.20</span></span>
+        <div class="mini-progress stamina" aria-hidden="true"><div id="staminaFill" class="mini-fill"></div></div>
+      </div>
+      <div id="focusBlock" class="resource-block focus-block">
+        <span class="main focus">Focus: <span id="focus">0</span> / <span id="focusMax">100</span></span>
+        <span class="sub">Focus/sec: <span id="focusPerSec">0</span> (after 60s idle)</span>
+        <div class="mini-progress focus" aria-hidden="true"><div id="focusFill" class="mini-fill"></div></div>
+      </div>
+    </div>
+    <div id="exhaustedHint" class="exhausted-hint" style="display:none"></div>
+    <div id="timeDilationStatus" class="spell-status-inline" style="display:none">
+      <span class="label">Time Dilation</span>
+      <span id="timeDilationTime" class="sub">0.0s left</span>
+      <span id="timeDilationBoost" class="sub">Boost: x1.00</span>
+      <div class="progress" style="width:80px;margin:0;"><div id="timeDilationFill" class="fill"></div></div>
+    </div>
+    <button id="settingsBtn" aria-label="Settings" type="button">&#9881;</button>
+  </header>
+
+  <section id="goalBar">
+    <div id="goalHint" class="goal-hint" aria-live="polite"></div>
+  </section>
+
+  <main id="main">
+    <div id="towerContainer"></div>
+  </main>
+
+  <nav id="bottomNav">
+    <button class="tab" data-panel="activitiesModal">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M10 8h4M10 12h4M10 16h2"/></svg>
+      <span>Activities</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button class="tab" data-panel="grimoireModal">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>
+      <span>Grimoire</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button class="tab" data-panel="towerModal">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="9" y="12" width="6" height="6"/><rect x="7" y="6" width="10" height="6"/><rect x="10" y="2" width="4" height="4"/></svg>
+      <span>Tower</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button id="ascensionTab" class="tab tab-locked" data-panel="ascensionModal" title="Unlocks at 50 floors">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+      <span>Ascension</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+  </nav>
+
+  <div id="activitiesModal" class="panel-modal">
+    <div class="panel-content">
+      <div class="panel-header">
+        <h2>Activities</h2>
+        <button class="panel-close" aria-label="Close" onclick="closePanel('activitiesModal')">&times;</button>
+      </div>
+      <p class="section-title">Spend stamina to improve your tower. Stamina recovers over time and is boosted by time magic (Time Dilation, Arcane Harvest).</p>
+      <div id="activities"></div>
+    </div>
+  </div>
+
+  <div id="grimoireModal" class="panel-modal">
+    <div class="panel-content">
+      <div class="panel-header">
+        <h2>Grimoire</h2>
+        <button class="panel-close" aria-label="Close" onclick="closePanel('grimoireModal')">&times;</button>
+      </div>
+      <div id="grimoireSpellSlots" class="grimoire-slots-stat"></div>
+      <div id="grimoireSwapTimer" class="grimoire-swap-timer"></div>
+      <div class="mini-progress" style="margin-top:6px;"><div id="swapCooldownFill" class="mini-fill"></div></div>
+      <p class="section-title">Active Spells</p>
+      <div id="activeSpells"></div>
+      <p class="section-title">Passive Spells</p>
+      <div id="passiveSpells"></div>
+    </div>
+  </div>
+
+  <div id="towerModal" class="panel-modal">
+    <div class="panel-content">
+      <div class="panel-header">
+        <h2>Tower</h2>
+        <button class="panel-close" aria-label="Close" onclick="closePanel('towerModal')">&times;</button>
+      </div>
+      <div class="stat floors-stat">Floors: <span id="floors" class="value">0</span></div>
+      <div id="roomSummary" class="stat"></div>
+      <div id="towerUpgradeButtons"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Upgrades</p>
+      <button id="manaFontBtn">Mana Font<span class="cost" id="manaFontCost"></span><span class="upgrade-preview" id="manaFontPreview"></span></button>
+      <button id="towerBtn">Raise Tower Floor<span class="cost" id="towerCost"></span><span class="upgrade-preview" id="towerPreview"></span></button>
+      <div class="section-divider"></div>
+      <div id="prestigeSection" style="display:none">
+        <p class="section-title">Prestige</p>
+        <p class="cost" id="prestigeDesc"></p>
+        <p class="cost" id="prestigeTokensEl">Prestige Tokens: 0</p>
+        <div id="prestigeTokenChoices"></div>
+        <button id="prestigeBtn">Prestige</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ascensionModal" class="panel-modal">
+    <div class="panel-content">
+      <div class="panel-header">
+        <h2>Ascension</h2>
+        <button class="panel-close" aria-label="Close" onclick="closePanel('ascensionModal')">&times;</button>
+      </div>
+      <p class="section-title">Restart your tower for permanent bonuses</p>
+      <p class="cost" id="ascensionDesc"></p>
+      <button id="ascendBtn">Ascend</button>
+      <div id="paragonSection" class="section-divider" style="margin-top:16px; display:none;">
+        <p class="section-title">Paragon (post-ascension)</p>
+        <p class="cost" id="paragonXpEl">Paragon XP: 0</p>
+        <div id="paragonNodes"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="roomModal" class="modal">
+    <div class="modal-content" id="roomChoices"></div>
+  </div>
+
+  <div id="settingsModal" class="modal">
+    <div class="modal-content settings-content">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button type="button" class="settings-close" aria-label="Close" onclick="closeSettings()">&times;</button>
+      </div>
+      <div class="settings-tabs" role="tablist" aria-label="Settings tabs">
+        <button type="button" id="settingsTabPrefs" class="settings-tab active" role="tab" aria-selected="true">General</button>
+        <button type="button" id="settingsTabKeys" class="settings-tab" role="tab" aria-selected="false">Keybinds</button>
+      </div>
+
+      <div id="settingsPagePrefs" class="settings-page">
+        <div class="settings-section">
+          <p class="settings-section-title">Preferences</p>
+          <div class="settings-row settings-toggle">
+            <label for="soundCheckbox" class="settings-label">
+              <input type="checkbox" id="soundCheckbox" class="settings-checkbox">
+              <span class="settings-toggle-text">Sound effects</span>
+            </label>
+          </div>
+          <div class="settings-row settings-toggle" style="margin-top:10px;">
+            <label for="tutorialCheckbox" class="settings-label">
+              <input type="checkbox" id="tutorialCheckbox" class="settings-checkbox">
+              <span class="settings-toggle-text">Show “Quick start” helper</span>
+            </label>
+          </div>
+          <button type="button" id="tutorialResetBtn" class="settings-btn" style="margin-top:10px;">Restart quick tutorial</button>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-section-title">Progress</p>
+          <button type="button" id="statsBtn" class="settings-btn">View statistics & achievements</button>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-section-title">Save data</p>
+          <button type="button" id="exportBtn" class="settings-btn">Export save to clipboard</button>
+          <button type="button" id="importBtn" class="settings-btn">Import save from clipboard</button>
+        </div>
+
+        <div class="settings-section settings-section-danger">
+          <p class="settings-section-title">Reset</p>
+          <button type="button" onclick="resetGame()" class="settings-btn settings-btn-danger">Reset save (clear all progress)</button>
+        </div>
+
+        <div class="settings-section settings-section-dev">
+          <p class="settings-section-title">Developer</p>
+          <button type="button" onclick="addTestMana()" class="settings-btn settings-btn-dev">+100000 Mana</button>
+        </div>
+      </div>
+
+      <div id="settingsPageKeys" class="settings-page hidden">
+        <div class="settings-section">
+          <p class="settings-section-title">Keybinds</p>
+          <div class="keybinds-list">
+            <div class="kb-row"><span class="kb-key">1</span><span class="kb-desc">Toggle Activities</span></div>
+            <div class="kb-row"><span class="kb-key">2</span><span class="kb-desc">Toggle Grimoire</span></div>
+            <div class="kb-row"><span class="kb-key">3</span><span class="kb-desc">Toggle Tower</span></div>
+            <div class="kb-row"><span class="kb-key">4</span><span class="kb-desc">Toggle Ascension (when unlocked)</span></div>
+            <div class="kb-row"><span class="kb-key">M</span><span class="kb-desc">Buy Mana Font (Tower)</span></div>
+            <div class="kb-row"><span class="kb-key">S</span><span class="kb-desc">Open/close Settings</span></div>
+            <div class="kb-row"><span class="kb-key">?</span><span class="kb-desc">Open “How to play”</span></div>
+            <div class="kb-row"><span class="kb-key">Esc</span><span class="kb-desc">Close overlays</span></div>
+          </div>
+          <p class="cost" style="margin-top:10px;">
+            Tips: Shift-click = x10 and Ctrl-click = max for Mana Fonts + room upgrades.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="statsModal" class="modal">
+    <div class="modal-content">
+      <h3>Statistics</h3>
+      <div id="statsGrid" class="stats-grid"></div>
+      <h4 style="margin-top:16px;">Achievements</h4>
+      <div id="achievementsList"></div>
+      <button onclick="closeStats()">Close</button>
+    </div>
+  </div>
+
+  <div id="introModal" class="modal">
+    <div class="modal-content intro-content">
+      <h3>Welcome to Mage Tower</h3>
+      <div class="intro-lore">
+        <p><strong>Why you're here:</strong> You are a mage who has claimed a leyline nexus. To channel its power and grow in influence, you must raise a tower—room by room—so your connection to the mana flow deepens. Each floor and every chamber you build strengthens your hold on the nexus and unlocks new spells and abilities.</p>
+      </div>
+      <div class="intro-how">
+        <p><strong>How to play:</strong></p>
+        <ul>
+          <li><strong>Mana</strong> is earned over time; buy Mana Fonts and build tower floors to increase the rate.</li>
+          <li><strong>Stamina</strong> recovers over time; spend it in <strong>Activities</strong> (Study, Harvest, etc.) to raise max mana, gain passive bonuses, and more.</li>
+          <li>Open the <strong>Tower</strong> tab to add new floors (each floor lets you build one room). Rooms boost mana, stamina, or spell power.</li>
+          <li>Unlock and cast spells from the <strong>Grimoire</strong> (Time Dilation, Leyline Manipulation, etc.) to multiply gains.</li>
+          <li>Click a built room in the tower view to see its description and upgrade it.</li>
+        </ul>
+      </div>
+      <button id="introCloseBtn">Got it</button>
+    </div>
+  </div>
+
+  <div id="roomDetailModal" class="modal">
+    <div class="modal-content room-detail-content">
+      <div class="room-detail-header">
+        <h3 id="roomDetailTitle">Room</h3>
+        <button type="button" class="room-detail-close" id="roomDetailClose" aria-label="Close">&times;</button>
+      </div>
+      <p id="roomDetailDesc" class="room-detail-desc"></p>
+      <p class="room-detail-level">Level: <span id="roomDetailLevel">1</span></p>
+      <button id="roomDetailUpgradeBtn" class="room-detail-upgrade">Upgrade</button>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+  <div id="saveIndicator">Saved</div>
+
+  <div id="offlineModal" class="modal">
+    <div class="modal-content offline-modal">
+      <h3>Welcome Back!</h3>
+      <p>You were away for <span id="offlineTime">0</span></p>
+      <div class="offline-gains">
+        <div class="gain-row">
+          <span>Mana earned:</span>
+          <span id="offlineMana" class="gain-value">+0</span>
+        </div>
+        <div class="gain-row">
+          <span>Stamina recovered:</span>
+          <span id="offlineStamina" class="gain-value stamina">+0</span>
+        </div>
+        <div class="gain-row">
+          <span>Focus gained:</span>
+          <span id="offlineFocus" class="gain-value focus">+0</span>
+        </div>
+      </div>
+      <button id="offlineCloseBtn">Continue</button>
+    </div>
+  </div>
+
+  <script>
+    // -------------------- CONSTANTS --------------------
+    const TICK = 100;
+    const SCALE = 1;
+    const FLOOR_BONUS = 0.01;
+    const UNLOCKS = { TIME: 5, ARCANE: 10, ASTRAL: 20 };
+    const MANA_FONT_RATE = 0.1;
+    const PRESTIGE_FLOOR = 50;
+    const PRESTIGE_SOFT_FLOOR = 25;
+    const PRESTIGE_BONUS = 0.10;
+    const PRESTIGE_SOFT_BONUS = 0.05;
+    const ASCENSION_FLOOR = 100;
+    const ASCENSION_FLOOR_2 = 150;
+    const ASCENSION_TAB_UNLOCK = 50;
+    const ASCENSION_BONUS_PER = 0.02;
+    const ASCENSION_2_BONUS_PER = 0.03;
+    const PRESTIGE_KEEP_FLOORS_PCT = 0.03;
+    const OFFLINE_CAP_HOURS = 24;
+    const LEYLINE_TAP_DURATION = 22;
+    const LEYLINE_TAP_PCT = 0.25;
+    const RITUAL_OF_BINDING_COOLDOWN_MS = 60 * 60 * 1000;
+    const RITUAL_ACTIVITY_COOLDOWN_MS = 30 * 60 * 1000;
+    const SPELL_ECHO_FREE_COOLDOWN_MS = 15 * 60 * 1000;
+    const MEDITATE_CAP = 5;
+    const MEDITATE_PCT_PER_STACK = 0.05;
+    const PARAGON_FLOOR_MIN = 100;
+    const PARAGON_NODE_COST = 10;
+    const PARAGON_XP_PER_TICK = 0.003;
+    const GOAL_MANA_PER_SEC = 1e6;
+    const VAULT_CAP = 0.50;
+    const LIBRARY_LEYLINE_PCT = 0.01;
+    const BASE_MANA_MAX = 1000;
+    const BASE_STAMINA_MAX = 100;
+    const STAMINA_REGEN_BASE = 0.12;
+    const STAMINA_REGEN_CAP = 1.0;
+    const STAMINA_ROOM_BONUS_CAP = 0.50;
+    const TOWER_STRAIN_FLOOR = 40;
+    const TOWER_STRAIN_PCT_PER_10 = 0.10;
+    const EXHAUSTED_DURATION_MS = 2 * 60 * 1000;
+    const FLOOR_STAMINA_COST_PCT = 0.08;
+    const BASE_FOCUS_MAX = 100;
+    const FOCUS_REGEN_BASE = 0.1;
+    const FOCUS_IDLE_SEC = 60;
+    const FOCUS_OFFLINE_DIVISOR = 8;
+    const OFFLINE_FOCUS_RATE = 0.25;
+
+    let game;
+
+    // -------------------- IMPROVED NUMBER FORMATTING --------------------
+    function formatNum(n) {
+      if (n < 0) return '-' + formatNum(-n);
+      if (n >= 1e15) return (n / 1e15).toFixed(2) + 'Qa'; // Quadrillion
+      if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';  // Trillion
+      if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';    // Billion
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';    // Million
+      if (n >= 1e4) return (n / 1e3).toFixed(1) + 'K';    // Show 1 decimal for 10K+
+      if (n >= 1e3) return (n / 1e3).toFixed(2) + 'K';    // Thousand
+      if (n >= 100) return n.toFixed(0);                  // No decimals 100+
+      if (n >= 10) return n.toFixed(1);                   // 1 decimal 10-99
+      return n.toFixed(1);
+    }
+    function formatRate(n) {
+      if (n < 0) return '-' + formatRate(-n);
+      if (n >= 1e3) return formatNum(n);
+      if (n >= 10) return n.toFixed(1);
+      if (n >= 1) return n.toFixed(2);
+      if (n >= 0.01) return n.toFixed(3);
+      if (n >= 0.001) return n.toFixed(4);
+      return n.toFixed(2);
+    }
+
+    function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+    function setMiniBar(fillEl, value, max) {
+      if (!fillEl) return;
+      const pct = max > 0 ? clamp01(value / max) * 100 : 0;
+      fillEl.style.width = pct.toFixed(1) + '%';
+    }
+    function setTabBadge(panelId, on) {
+      const tab = document.querySelector('#bottomNav .tab[data-panel="' + panelId + '"]');
+      if (!tab) return;
+      if (on) tab.classList.add('has-badge');
+      else tab.classList.remove('has-badge');
+    }
+
+    // -------------------- POLISH HELPER FUNCTIONS --------------------
+    function updateResourceFullState(el, value, max) {
+      if (!el) return;
+      const isFull = value >= max * 0.99; // 99% threshold to account for floating point
+      if (isFull) el.classList.add('resource-full');
+      else el.classList.remove('resource-full');
+    }
+
+    function showSaveIndicator(saving) {
+      if (!saveIndicator) return;
+      if (saving) {
+        saveIndicator.classList.add('saving');
+        saveIndicator.textContent = 'Saving';
+      } else {
+        saveIndicator.classList.remove('saving');
+        const now = new Date();
+        saveIndicator.textContent = 'Saved ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+
+    function formatDuration(ms) {
+      const sec = Math.floor(ms / 1000);
+      if (sec < 60) return sec + ' seconds';
+      const min = Math.floor(sec / 60);
+      if (min < 60) return min + ' minute' + (min !== 1 ? 's' : '');
+      const hr = Math.floor(min / 60);
+      const remainMin = min % 60;
+      if (hr < 24) return hr + ' hour' + (hr !== 1 ? 's' : '') + (remainMin > 0 ? ' ' + remainMin + ' min' : '');
+      const days = Math.floor(hr / 24);
+      const remainHr = hr % 24;
+      return days + ' day' + (days !== 1 ? 's' : '') + (remainHr > 0 ? ' ' + remainHr + ' hr' : '');
+    }
+
+    function showOfflineProgress(manaGained, staminaGained, focusGained, duration) {
+      if (!offlineModal) return;
+      // Only show if meaningful gains
+      if (manaGained < 1 && staminaGained < 1 && focusGained < 1) return;
+      if (duration < 60000) return; // Less than 1 minute, don't bother
+
+      document.getElementById('offlineTime').textContent = formatDuration(duration);
+      document.getElementById('offlineMana').textContent = '+' + formatNum(manaGained);
+      document.getElementById('offlineStamina').textContent = '+' + formatNum(staminaGained);
+      document.getElementById('offlineFocus').textContent = '+' + formatNum(focusGained);
+      offlineModal.style.display = 'flex';
+    }
+
+    // Close offline modal handler
+    if (offlineCloseBtn) {
+      offlineCloseBtn.onclick = () => {
+        if (offlineModal) offlineModal.style.display = 'none';
+      };
+    }
+
+    // -------------------- ROOMS --------------------
+    const ROOMS = {
+      Stairs: { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec per Stairs', buildableOnce: false },
+      Vault: { unlock: () => true, unlockFloors: 0, desc: '+5% mana/sec per level (capped 50%). Build once, then upgrade.', buildableOnce: true, manaPct: 0.05, capMana: true },
+      Library: { unlock: () => totalFloors() >= UNLOCKS.ARCANE, unlockFloors: UNLOCKS.ARCANE, desc: '+20% Leyline effect per level. Build once, then upgrade.', buildableOnce: true, spellPct: 0.20 },
+      Observatory: { unlock: () => totalFloors() >= UNLOCKS.ASTRAL, unlockFloors: UNLOCKS.ASTRAL, desc: 'Boosts Astral Insight +10% per level. Build once, then upgrade.', buildableOnce: true, astralPct: 0.10 },
+      Arcanum: { unlock: () => totalFloors() >= 20, unlockFloors: 20, desc: '+1 spell slot. Unlocks at 20 floors.', buildableOnce: true, extraSpellSlots: 1 },
+      'Hall of Preservation': { unlock: () => totalFloors() >= 30, unlockFloors: 30, desc: 'Prestige keeps 3% of current floors (as Stairs).', buildableOnce: true, prestigeKeepFloorsPct: 0.03 },
+      'Chronurgy Chamber': { unlock: () => totalFloors() >= 40, unlockFloors: 40, desc: '-10% spell-swap cooldown time per level.', buildableOnce: true, swapCooldownReduction: 0.10 },
+      'Leyline Nexus': { unlock: () => totalFloors() >= 50, unlockFloors: 50, desc: '+1% mana/sec per Leyline Manipulation level.', buildableOnce: true, leylineNexusPct: 0.01 },
+      'Alchemy Lab': { unlock: () => true, unlockFloors: 0, desc: '+0.5% mana/sec per level.', buildableOnce: true, manaPct: 0.005 },
+      Scriptorium: { unlock: () => true, unlockFloors: 0, desc: '+0.4% spell effect per level.', buildableOnce: true, spellPct: 0.004 },
+      'Meditation Chamber': { unlock: () => true, unlockFloors: 0, desc: '+1% stamina regen per level.', buildableOnce: true, staminaPct: 0.01 },
+      'Crystal Storage': { unlock: () => true, unlockFloors: 0, desc: '+0.3% mana/sec per level.', buildableOnce: true, manaPct: 0.003 },
+      'Herb Garden': { unlock: () => true, unlockFloors: 0, desc: '+0.25% mana/sec per level.', buildableOnce: true, manaPct: 0.0025 },
+      'Summoning Circle': { unlock: () => true, unlockFloors: 0, desc: '+0.35% mana/sec per level.', buildableOnce: true, manaPct: 0.0035 },
+      'Enchantment Table': { unlock: () => true, unlockFloors: 0, desc: '+0.3% spell effect per level.', buildableOnce: true, spellPct: 0.003 },
+      Wardstone: { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec per level.', buildableOnce: true, manaPct: 0.002 },
+      'Leyline Tap': { unlock: () => true, unlockFloors: 0, desc: '+0.25% mana/sec per level.', buildableOnce: true, manaPct: 0.0025 },
+      'Scrying Pool': { unlock: () => true, unlockFloors: 0, desc: '+0.5% stamina regen per level.', buildableOnce: true, staminaPct: 0.005 },
+      'Bell Tower': { unlock: () => true, unlockFloors: 0, desc: '+0.15% mana/sec per level.', buildableOnce: true, manaPct: 0.0015 },
+      Brewery: { unlock: () => true, unlockFloors: 0, desc: '+0.3% mana/sec per level.', buildableOnce: true, manaPct: 0.003 },
+      Archive: { unlock: () => true, unlockFloors: 0, desc: '+0.35% spell effect per level.', buildableOnce: true, spellPct: 0.0035 },
+      Greenhouse: { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec per level.', buildableOnce: true, manaPct: 0.002 },
+      Workshop: { unlock: () => true, unlockFloors: 0, desc: '+0.4% spell effect per level.', buildableOnce: true, spellPct: 0.004 },
+      Sanctum: { unlock: () => true, unlockFloors: 0, desc: '+0.15% mana/sec and +1.5% stamina per level.', buildableOnce: true, manaPct: 0.0015, staminaPct: 0.015 },
+      Atrium: { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec per level.', buildableOnce: true, manaPct: 0.001 },
+      'Ritual Chamber': { unlock: () => true, unlockFloors: 0, desc: '+0.4% mana/sec per level.', buildableOnce: true, manaPct: 0.004 },
+      Reliquary: { unlock: () => true, unlockFloors: 0, desc: '+0.2% spell effect per level.', buildableOnce: true, spellPct: 0.002 },
+      Conservatory: { unlock: () => true, unlockFloors: 0, desc: '+0.25% stamina regen per level.', buildableOnce: true, staminaPct: 0.0025 },
+      'Lantern Room': { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec per level.', buildableOnce: true, manaPct: 0.001 },
+      Dispensary: { unlock: () => true, unlockFloors: 0, desc: '+0.2% stamina regen per level.', buildableOnce: true, staminaPct: 0.002 },
+      Lectern: { unlock: () => true, unlockFloors: 0, desc: '+0.3% spell effect per level.', buildableOnce: true, spellPct: 0.003 },
+      Spire: { unlock: () => true, unlockFloors: 0, desc: '+0.15% mana/sec per level.', buildableOnce: true, manaPct: 0.0015 },
+      Antechamber: { unlock: () => true, unlockFloors: 0, desc: '+0.1% stamina regen per level.', buildableOnce: true, staminaPct: 0.001 },
+      'Conduit Room': { unlock: () => true, unlockFloors: 0, desc: '+0.35% mana/sec per level.', buildableOnce: true, manaPct: 0.0035 },
+      'Offering Shrine': { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec and +0.1% spell per level.', buildableOnce: true, manaPct: 0.002, spellPct: 0.001 },
+      Vestibule: { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec per level.', buildableOnce: true, manaPct: 0.001 },
+      Turret: { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec per level.', buildableOnce: true, manaPct: 0.002 },
+      // More immersive mage tower rooms (all available from floor 0)
+      Cloister: { unlock: () => true, unlockFloors: 0, desc: '+0.15% stamina regen per level.', buildableOnce: true, staminaPct: 0.0015 },
+      Refinery: { unlock: () => true, unlockFloors: 0, desc: '+0.25% mana/sec per level.', buildableOnce: true, manaPct: 0.0025 },
+      'Mana Well': { unlock: () => true, unlockFloors: 0, desc: '+0.3% mana/sec per level.', buildableOnce: true, manaPct: 0.003 },
+      'Star Chart Room': { unlock: () => true, unlockFloors: 0, desc: '+0.2% spell effect per level.', buildableOnce: true, spellPct: 0.002 },
+      'Echo Chamber': { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec per level.', buildableOnce: true, manaPct: 0.001 },
+      'Dust Vault': { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec per level.', buildableOnce: true, manaPct: 0.002 },
+      'Ritual Altar': { unlock: () => true, unlockFloors: 0, desc: '+0.35% mana/sec per level.', buildableOnce: true, manaPct: 0.0035 },
+      'Candle Hall': { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec per level.', buildableOnce: true, manaPct: 0.001 },
+      'Ink Room': { unlock: () => true, unlockFloors: 0, desc: '+0.25% spell effect per level.', buildableOnce: true, spellPct: 0.0025 },
+      'Quill Desk': { unlock: () => true, unlockFloors: 0, desc: '+0.2% spell effect per level.', buildableOnce: true, spellPct: 0.002 },
+      'Astrolabe Room': { unlock: () => true, unlockFloors: 0, desc: '+0.15% mana/sec per level.', buildableOnce: true, manaPct: 0.0015 },
+      'Gargoyle Perch': { unlock: () => true, unlockFloors: 0, desc: '+0.15% mana/sec per level.', buildableOnce: true, manaPct: 0.0015 },
+      'Sigil Wall': { unlock: () => true, unlockFloors: 0, desc: '+0.3% spell effect per level.', buildableOnce: true, spellPct: 0.003 },
+      'Rune Stone': { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec and +0.1% spell per level.', buildableOnce: true, manaPct: 0.002, spellPct: 0.001 },
+      'Potion Cellar': { unlock: () => true, unlockFloors: 0, desc: '+0.3% mana/sec per level.', buildableOnce: true, manaPct: 0.003 },
+      'Mortar Room': { unlock: () => true, unlockFloors: 0, desc: '+0.25% mana/sec per level.', buildableOnce: true, manaPct: 0.0025 },
+      'Divination Den': { unlock: () => true, unlockFloors: 0, desc: '+0.4% spell effect per level.', buildableOnce: true, spellPct: 0.004 },
+      'Oracle Nook': { unlock: () => true, unlockFloors: 0, desc: '+0.2% stamina regen per level.', buildableOnce: true, staminaPct: 0.002 },
+      'Sanctified Hall': { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec and +1% stamina per level.', buildableOnce: true, manaPct: 0.001, staminaPct: 0.01 },
+      'Chime Room': { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec per level.', buildableOnce: true, manaPct: 0.001 },
+      'Brazier Room': { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec per level.', buildableOnce: true, manaPct: 0.002 },
+      'Crystal Ball Room': { unlock: () => true, unlockFloors: 0, desc: '+0.35% spell effect per level.', buildableOnce: true, spellPct: 0.0035 },
+      'Mirror Hall': { unlock: () => true, unlockFloors: 0, desc: '+0.15% mana/sec per level.', buildableOnce: true, manaPct: 0.0015 },
+      'Shadow Alcove': { unlock: () => true, unlockFloors: 0, desc: '+0.25% spell effect per level.', buildableOnce: true, spellPct: 0.0025 },
+      'Fountain Court': { unlock: () => true, unlockFloors: 0, desc: '+0.2% stamina regen per level.', buildableOnce: true, staminaPct: 0.002 },
+      'Well of Whispers': { unlock: () => true, unlockFloors: 0, desc: '+0.3% mana/sec per level.', buildableOnce: true, manaPct: 0.003 },
+      'Binding Circle': { unlock: () => true, unlockFloors: 0, desc: '+0.3% spell effect per level.', buildableOnce: true, spellPct: 0.003 },
+      'Focus Chamber': { unlock: () => true, unlockFloors: 0, desc: '+0.4% stamina regen per level.', buildableOnce: true, staminaPct: 0.004 },
+      'Resonance Hall': { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec per level.', buildableOnce: true, manaPct: 0.002 },
+      'Aether Pool': { unlock: () => true, unlockFloors: 0, desc: '+0.4% mana/sec per level.', buildableOnce: true, manaPct: 0.004 },
+      'Weather Vane': { unlock: () => true, unlockFloors: 0, desc: '+0.1% mana/sec per level.', buildableOnce: true, manaPct: 0.001 },
+      'Lectern Hall': { unlock: () => true, unlockFloors: 0, desc: '+0.25% spell effect per level.', buildableOnce: true, spellPct: 0.0025 },
+      'Grimoire Shelf': { unlock: () => true, unlockFloors: 0, desc: '+0.2% spell effect per level.', buildableOnce: true, spellPct: 0.002 },
+      'Essence Still': { unlock: () => true, unlockFloors: 0, desc: '+0.35% mana/sec per level.', buildableOnce: true, manaPct: 0.0035 },
+      'Ward Chamber': { unlock: () => true, unlockFloors: 0, desc: '+0.15% stamina regen per level.', buildableOnce: true, staminaPct: 0.0015 },
+      'Beacon Tower': { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec per level.', buildableOnce: true, manaPct: 0.002 },
+      Solarium: { unlock: () => true, unlockFloors: 0, desc: '+0.15% mana/sec and +1% stamina per level.', buildableOnce: true, manaPct: 0.0015, staminaPct: 0.01 },
+      Crypt: { unlock: () => true, unlockFloors: 0, desc: '+0.25% mana/sec per level.', buildableOnce: true, manaPct: 0.0025 },
+      'Offering Table': { unlock: () => true, unlockFloors: 0, desc: '+0.2% mana/sec and +0.1% spell per level.', buildableOnce: true, manaPct: 0.002, spellPct: 0.001 },
+      'Prism Room': { unlock: () => true, unlockFloors: 0, desc: '+0.3% spell effect per level.', buildableOnce: true, spellPct: 0.003 },
+      'Smoke Alcove': { unlock: () => true, unlockFloors: 0, desc: '+0.2% stamina regen per level.', buildableOnce: true, staminaPct: 0.002 },
+      'Tome Vault': { unlock: () => true, unlockFloors: 0, desc: '+0.35% spell effect per level.', buildableOnce: true, spellPct: 0.0035 },
+      'Cauldron Nook': { unlock: () => true, unlockFloors: 0, desc: '+0.3% mana/sec per level.', buildableOnce: true, manaPct: 0.003 },
+      'Pilgrim Rest': { unlock: () => true, unlockFloors: 0, desc: '+0.25% stamina regen per level.', buildableOnce: true, staminaPct: 0.0025 },
+    };
+    const SPECIAL_ROOM_NAMES = Object.keys(ROOMS).filter(n => ROOMS[n].buildableOnce);
+    const ORIGINAL_SPECIAL = ['Vault', 'Library', 'Observatory'];
+    const RANDOM_FLOOR_ROOMS = SPECIAL_ROOM_NAMES.filter(n => !ORIGINAL_SPECIAL.includes(n));
+    function initialSpecialRooms() {
+      const o = {};
+      SPECIAL_ROOM_NAMES.forEach(n => { o[n] = { built: false, level: 0 }; });
+      return o;
+    }
+    game = {
+      mana: 0,
+      stamina: 0,
+      focus: 0,
+      manaFonts: 0,
+      specialRooms: initialSpecialRooms(),
+      stairs: 0,
+      passive: { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0 },
+      active: { boost: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, boostTD: 1, boostHarvest: 1, leylineTapTimer: 0, leylineTapPct: 0 },
+      studyCount: 0,
+      stats: {
+        timeDilationCasts: 0,
+        arcaneHarvestCasts: 0,
+        leylineSurgeCasts: 0,
+        totalManaEarned: 0,
+        totalSpellsCast: 0,
+        timePlayedMs: 0,
+        achievements: [],
+        totalFloorsEver: 0,
+        totalStaminaSpent: 0,
+        maxFloorsReached: 0,
+        maxManaPerSecReached: 0,
+      },
+      prestige: 0,
+      softPrestige: 0,
+      ascension: 0,
+      ascensionTier2: 0,
+      prestigeTokens: 0,
+      prestigeTokenChoice: null,
+      soundEnabled: false,
+      settings: { showTutorial: true },
+      lastSave: Date.now(),
+      memorizedSpells: [],
+      spellSwapCooldownEnd: 0,
+      wardOfPreservationUsed: false,
+      ritualOfBindingCooldownEnd: 0,
+      ritualOfBindingNextSwapHalved: false,
+      meditateStacks: 0,
+      scryLockedRoom: null,
+      transcribeBonusPct: 0,
+      ritualBuffEnd: 0,
+      attuneDiscount: 0,
+      ritualActivityCooldownEnd: 0,
+      spellEchoNextFreeAt: 0,
+      floorsKept: 0,
+      nextFloorDuplicate: null,
+      nextFloorCursed: false,
+      nextFloorBonus: false,
+      paragonXp: 0,
+      paragonSpent: { manaPct: 0, spellEffect: 0, stamina: 0 },
+      lastActivityOrSpellAt: 0,
+      exhaustedUntil: 0,
+      tutorial: { clicked: false, done: false, completedToast: false },
+    };
+    const STAIRS_MANA_PCT = 0.001;
+    const UPGRADE_COST_BASE = 80;
+
+    // -------------------- UI ELEMENTS --------------------
+    const mana = document.getElementById('mana');
+    const manaPerSec = document.getElementById('manaPerSec');
+    const staminaEl = document.getElementById('stamina');
+    const staminaMaxEl = document.getElementById('staminaMax');
+    const staminaPerSecEl = document.getElementById('staminaPerSec');
+    const focusEl = document.getElementById('focus');
+    const focusMaxEl = document.getElementById('focusMax');
+    const focusPerSecEl = document.getElementById('focusPerSec');
+    const exhaustedHint = document.getElementById('exhaustedHint');
+    const floors = document.getElementById('floors');
+    const roomSummary = document.getElementById('roomSummary');
+    const towerUpgradeButtons = document.getElementById('towerUpgradeButtons');
+    const grimoireSpellSlotsEl = document.getElementById('grimoireSpellSlots');
+    const grimoireSwapTimerEl = document.getElementById('grimoireSwapTimer');
+    const swapCooldownFill = document.getElementById('swapCooldownFill');
+    const activeSpellsDiv = document.getElementById('activeSpells');
+    const passiveSpellsDiv = document.getElementById('passiveSpells');
+    const manaFontBtn = document.getElementById('manaFontBtn');
+    const manaFontCostEl = document.getElementById('manaFontCost');
+    const manaFontPreview = document.getElementById('manaFontPreview');
+    const towerBtn = document.getElementById('towerBtn');
+    const towerCostEl = document.getElementById('towerCost');
+    const towerPreview = document.getElementById('towerPreview');
+    const towerContainer = document.getElementById('towerContainer');
+    const roomModal = document.getElementById('roomModal');
+    const roomChoices = document.getElementById('roomChoices');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const prestigeBtn = document.getElementById('prestigeBtn');
+    const prestigeDesc = document.getElementById('prestigeDesc');
+    const prestigeSection = document.getElementById('prestigeSection');
+    const ascensionTab = document.getElementById('ascensionTab');
+    const ascensionDesc = document.getElementById('ascensionDesc');
+    const ascendBtn = document.getElementById('ascendBtn');
+    const timeDilationStatus = document.getElementById('timeDilationStatus');
+    const timeDilationTime = document.getElementById('timeDilationTime');
+    const timeDilationFill = document.getElementById('timeDilationFill');
+    const timeDilationBoost = document.getElementById('timeDilationBoost');
+    const manaMaxEl = document.getElementById('manaMax');
+    const manaFillEl = document.getElementById('manaFill');
+    const staminaFillEl = document.getElementById('staminaFill');
+    const focusFillEl = document.getElementById('focusFill');
+    const goalHintEl = document.getElementById('goalHint');
+    const goalBarEl = document.getElementById('goalBar');
+    const activitiesDiv = document.getElementById('activities');
+    const soundCheckbox = document.getElementById('soundCheckbox');
+    const tutorialCheckbox = document.getElementById('tutorialCheckbox');
+    const tutorialResetBtn = document.getElementById('tutorialResetBtn');
+    const settingsTabPrefs = document.getElementById('settingsTabPrefs');
+    const settingsTabKeys = document.getElementById('settingsTabKeys');
+    const settingsPagePrefs = document.getElementById('settingsPagePrefs');
+    const settingsPageKeys = document.getElementById('settingsPageKeys');
+    const statsModal = document.getElementById('statsModal');
+    const introModal = document.getElementById('introModal');
+    const introCloseBtn = document.getElementById('introCloseBtn');
+    const roomDetailModal = document.getElementById('roomDetailModal');
+    const roomDetailClose = document.getElementById('roomDetailClose');
+    const roomDetailTitle = document.getElementById('roomDetailTitle');
+    const roomDetailDesc = document.getElementById('roomDetailDesc');
+    const roomDetailLevel = document.getElementById('roomDetailLevel');
+    const roomDetailUpgradeBtn = document.getElementById('roomDetailUpgradeBtn');
+    const statsGrid = document.getElementById('statsGrid');
+    const achievementsList = document.getElementById('achievementsList');
+    const paragonSection = document.getElementById('paragonSection');
+    const paragonXpEl = document.getElementById('paragonXpEl');
+    const paragonNodes = document.getElementById('paragonNodes');
+    const toastContainer = document.getElementById('toastContainer');
+    const saveIndicator = document.getElementById('saveIndicator');
+    const offlineModal = document.getElementById('offlineModal');
+    const offlineCloseBtn = document.getElementById('offlineCloseBtn');
+    const manaBlock = document.getElementById('manaBlock');
+    const staminaBlock = document.getElementById('staminaBlock');
+    const focusBlock = document.getElementById('focusBlock');
+
+    // -------------------- COSTS --------------------
+    const manaFontCost = () => 10 + game.manaFonts * 9;
+
+    function totalManaFontCostFor(n) {
+      // linear cost: (10 + 9*fonts) + ... + (10 + 9*(fonts+n-1))
+      const nSafe = Math.max(0, Math.floor(n));
+      if (nSafe <= 0) return 0;
+      const first = manaFontCost();
+      return (nSafe / 2) * (2 * first + 9 * (nSafe - 1));
+    }
+    function maxAffordableManaFonts() {
+      const budget = game.mana || 0;
+      const first = manaFontCost();
+      // Solve: 9n^2 + (2*first - 9)n - 2*budget <= 0
+      const A = 9;
+      const B = 2 * first - 9;
+      const disc = B * B + 72 * budget;
+      const n = Math.floor((-B + Math.sqrt(Math.max(0, disc))) / (2 * A));
+      // safety
+      let nSafe = Math.max(0, n);
+      while (nSafe > 0 && totalManaFontCostFor(nSafe) > budget + 1e-9) nSafe--;
+      return nSafe;
+    }
+    function buyManaFonts(nWanted) {
+      const n = Math.min(Math.max(0, Math.floor(nWanted)), 100000);
+      if (n <= 0) return 0;
+      const cost = totalManaFontCostFor(n);
+      if (game.mana < cost) return 0;
+      game.mana -= cost;
+      game.manaFonts += n;
+      return n;
+    }
+
+    function totalFloors() {
+      const sr = game.specialRooms || {};
+      let special = 0;
+      SPECIAL_ROOM_NAMES.forEach(name => { if (sr[name] && sr[name].built) special++; });
+      return (game.stairs || 0) + special + (game.floorsKept || 0);
+    }
+    function totalFloorsFromGame(g) {
+      const sr = g.specialRooms || {};
+      let special = 0;
+      SPECIAL_ROOM_NAMES.forEach(name => { if (sr[name] && sr[name].built) special++; });
+      return (g.stairs || 0) + special + (g.floorsKept || 0);
+    }
+    function conduitMasteryMultiplier() {
+      const lvl = game.passive.conduit || 0;
+      if (lvl <= 0) return 1;
+      return 1 + (game.manaFonts || 0) * 0.01 * lvl;
+    }
+    function towerBondMultiplier() {
+      const lvl = game.passive.towerBond || 0;
+      if (lvl <= 0) return 1;
+      return 1 + totalFloors() * 0.001 * lvl;
+    }
+    function leylineNexusMultiplier() {
+      const lvl = countRooms('Leyline Nexus');
+      if (lvl <= 0) return 1;
+      return 1 + (game.passive.arcane || 0) * 0.01 * lvl;
+    }
+    function chronurgySwapReduction() {
+      const lvl = countRooms('Chronurgy Chamber');
+      return lvl * 0.10;
+    }
+
+    const floorCost = () => 50 * (totalFloors() + 1);
+    function effectiveFloorCost() {
+      let c = floorCost();
+      if (game.nextFloorBonus) c = 0;
+      else if (game.nextFloorCursed) c *= 1.5;
+      return c;
+    }
+
+    function countRooms(name) {
+      if (name === 'Stairs') return game.stairs || 0;
+      const sr = game.specialRooms || {};
+      const r = sr[name];
+      if (!r || !r.built) return 0;
+      return r.level || 1;
+    }
+    function maxSpellSlots() {
+      let slots = 1;
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        const info = ROOMS[name];
+        if (info && (info.extraSpellSlots || 0) > 0) {
+          const lvl = countRooms(name);
+          slots += lvl * (info.extraSpellSlots || 0);
+        }
+      });
+      return slots;
+    }
+    function getSpellId(s, isActive) {
+      if (isActive && s.id) return s.id;
+      if (!isActive && s.key) return s.key;
+      return (s.name || '').replace(/\s+/g, '').toLowerCase();
+    }
+    function isMemorized(spellId) {
+      const list = game.memorizedSpells || [];
+      return Array.isArray(list) && list.includes(spellId);
+    }
+    function effectiveSpellSwapCooldownMs() {
+      let ms = SPELL_SWAP_COOLDOWN_MS * Math.max(0.1, 1 - chronurgySwapReduction());
+      if (game.ritualOfBindingNextSwapHalved) ms *= 0.5;
+      return ms;
+    }
+    function canSwapSpell() {
+      return (game.spellSwapCooldownEnd || 0) <= Date.now();
+    }
+    function spellSwapCooldownRemaining() {
+      const end = game.spellSwapCooldownEnd || 0;
+      const rem = Math.max(0, (end - Date.now()) / 1000);
+      return rem;
+    }
+    function forgetSpell(spellId) {
+      if (!canSwapSpell()) return;
+      const list = (game.memorizedSpells || []).filter(id => id !== spellId);
+      game.memorizedSpells = list;
+      const ms = effectiveSpellSwapCooldownMs();
+      game.spellSwapCooldownEnd = Date.now() + ms;
+      if (game.ritualOfBindingNextSwapHalved) game.ritualOfBindingNextSwapHalved = false;
+      renderAll();
+    }
+    function memorizeSpell(spellId) {
+      if (!canSwapSpell()) return;
+      const list = game.memorizedSpells || [];
+      if (list.length >= maxSpellSlots()) return;
+      if (list.includes(spellId)) return;
+      game.memorizedSpells = [...list, spellId];
+      const ms = effectiveSpellSwapCooldownMs();
+      game.spellSwapCooldownEnd = Date.now() + ms;
+      if (game.ritualOfBindingNextSwapHalved) game.ritualOfBindingNextSwapHalved = false;
+      renderAll();
+    }
+
+    function upgradeCost(roomName) {
+      const r = (game.specialRooms || {})[roomName];
+      const level = (r && r.built && r.level) ? r.level : 1;
+      return UPGRADE_COST_BASE * Math.pow(1.5, level - 1);
+    }
+
+    function spellEffectMultiplier() {
+      const base = 1 + game.passive.arcane * 0.15;
+      const libraryLevel = countRooms('Library');
+      let mult = base * (1 + libraryLevel * LIBRARY_LEYLINE_PCT);
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        if (name === 'Library') return;
+        const info = ROOMS[name];
+        if (!info.spellPct) return;
+        const lvl = countRooms(name);
+        mult *= (1 + lvl * info.spellPct);
+      });
+      mult *= (1 + (game.transcribeBonusPct || 0) / 100);
+      mult *= paragonSpellEffectMultiplier();
+      return mult;
+    }
+    function milestoneManaMultiplier() {
+      const ever = game.stats.totalFloorsEver || 0;
+      let mult = 1;
+      if (ever >= 200) mult += 0.01;
+      if (ever >= 500) mult += 0.01;
+      if (ever >= 1000) mult += 0.02;
+      return mult;
+    }
+    function paragonManaMultiplier() {
+      const s = game.paragonSpent || {};
+      return 1 + (s.manaPct || 0) * 0.005;
+    }
+    function paragonSpellEffectMultiplier() {
+      const s = game.paragonSpent || {};
+      return 1 + (s.spellEffect || 0) * 0.01;
+    }
+
+    function astralManaMultiplier() {
+      const obsLevel = countRooms('Observatory');
+      const pct = (ROOMS.Observatory && ROOMS.Observatory.astralPct) ? ROOMS.Observatory.astralPct : 0.10;
+      return 1 + game.passive.astral * pct * obsLevel;
+    }
+
+    function maxMana() {
+      return BASE_MANA_MAX * Math.pow(1.07, game.studyCount || 0);
+    }
+
+    function capMana() {
+      const cap = maxMana();
+      if (game.mana > cap) game.mana = cap;
+    }
+
+    function maxStamina() {
+      const well = (game.passive.staminaWell || 0) * 5;
+      const paragon = (game.paragonSpent && game.paragonSpent.stamina) ? game.paragonSpent.stamina * 5 : 0;
+      return BASE_STAMINA_MAX + well + paragon;
+    }
+
+    function staminaRoomBonusMult() {
+      let raw = 0;
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        const info = ROOMS[name];
+        if (!info.staminaPct) return;
+        const lvl = countRooms(name);
+        raw += lvl * info.staminaPct;
+      });
+      return 1 + Math.min(raw, STAMINA_ROOM_BONUS_CAP);
+    }
+
+    function towerStrainStaminaMult() {
+      const tf = totalFloors();
+      if (tf < TOWER_STRAIN_FLOOR) return 1;
+      const over = tf - TOWER_STRAIN_FLOOR;
+      const pct = Math.floor(over / 10) * TOWER_STRAIN_PCT_PER_10;
+      return Math.max(0.2, 1 - pct);
+    }
+
+    function staminaPerSecond() {
+      const roomMult = staminaRoomBonusMult();
+      const wellRegen = (game.passive.staminaWell || 0) * 0.01;
+      const meditateBonus = Math.min(game.meditateStacks || 0, MEDITATE_CAP) * MEDITATE_PCT_PER_STACK;
+      let mult = roomMult - 1 + wellRegen + meditateBonus + 1;
+      const base = STAMINA_REGEN_BASE * mult;
+      const boostTD = (game.active && game.active.boostTD) ? game.active.boostTD : 1;
+      const boostHarvest = (game.active && game.active.boostHarvest) ? game.active.boostHarvest : 1;
+      let sps = base * boostTD * boostHarvest;
+      if (game.ritualBuffEnd && game.ritualBuffEnd > Date.now()) sps *= 2;
+      sps *= towerStrainStaminaMult();
+      if ((game.exhaustedUntil || 0) > Date.now()) sps *= 0.5;
+      return Math.min(sps, STAMINA_REGEN_CAP);
+    }
+
+    function maxFocus() {
+      return BASE_FOCUS_MAX;
+    }
+
+    function focusIdleSeconds() {
+      return (Date.now() - (game.lastActivityOrSpellAt || 0)) / 1000;
+    }
+
+    function isRestingForFocus() {
+      return focusIdleSeconds() >= FOCUS_IDLE_SEC;
+    }
+
+    function focusPerSecond() {
+      if (!isRestingForFocus()) return 0;
+      return FOCUS_REGEN_BASE;
+    }
+
+    function trySpendFocus(amount) {
+      if (!amount || amount <= 0) return true;
+      const f = game.focus || 0;
+      if (f < amount) return false;
+      game.focus = f - amount;
+      return true;
+    }
+
+    function recordActivityOrSpell() {
+      game.lastActivityOrSpellAt = Date.now();
+    }
+
+    function capFocus() {
+      const cap = maxFocus();
+      if ((game.focus || 0) > cap) game.focus = cap;
+    }
+
+    function setExhausted() {
+      game.exhaustedUntil = Date.now() + EXHAUSTED_DURATION_MS;
+    }
+
+    function capStamina() {
+      const cap = maxStamina();
+      if (game.stamina > cap) game.stamina = cap;
+    }
+
+    function timeDilationCost(casts) {
+      let cost = 5;
+      const spellMult = spellEffectMultiplier();
+      const growthFactor = 1 + 0.07 * spellMult;
+      for (let i = 0; i < casts; i++) cost = (cost + 1) * growthFactor;
+      return cost;
+    }
+
+    function manaPerSecond() {
+      const floors = totalFloors();
+      let m = (game.manaFonts * MANA_FONT_RATE) * (1 + floors * FLOOR_BONUS);
+      const vaultLevel = countRooms('Vault');
+      m *= Math.min(1 + vaultLevel * 0.05, 1 + VAULT_CAP);
+      m *= (1 + (game.stairs || 0) * STAIRS_MANA_PCT);
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        if (name === 'Vault') return;
+        const info = ROOMS[name];
+        if (!info.manaPct) return;
+        const lvl = countRooms(name);
+        m *= (1 + lvl * info.manaPct);
+      });
+      m *= astralManaMultiplier();
+      m *= conduitMasteryMultiplier();
+      m *= towerBondMultiplier();
+      m *= leylineNexusMultiplier();
+      const boostTD = (game.active && game.active.boostTD) ? game.active.boostTD : 1;
+      const boostHarvest = (game.active && game.active.boostHarvest) ? game.active.boostHarvest : 1;
+      m *= boostTD * boostHarvest;
+      if (game.active && game.active.leylineTapTimer > 0) m *= (1 + (game.active.leylineTapPct || 0));
+      if (game.ritualBuffEnd && game.ritualBuffEnd > Date.now()) m *= 2;
+      m *= 1 + game.prestige * PRESTIGE_BONUS + game.softPrestige * PRESTIGE_SOFT_BONUS;
+      m *= 1 + game.ascension * ASCENSION_BONUS_PER;
+      const asc2 = (game.ascensionTier2 || 0) * ASCENSION_2_BONUS_PER;
+      m *= 1 + asc2;
+      m *= achievementManaMultiplier();
+      m *= milestoneManaMultiplier();
+      m *= paragonManaMultiplier();
+      return m;
+    }
+
+    // -------------------- ACHIEVEMENTS --------------------
+    const ACHIEVEMENTS = [
+      { id: 'first_10_floors', name: 'First Steps', desc: 'Reach 10 floors', check: g => totalFloorsFromGame(g) >= 10, reward: '+1% mana/sec' },
+      { id: 'first_25', name: 'Tower Rising', desc: 'Reach 25 floors', check: g => totalFloorsFromGame(g) >= 25, reward: '+2% mana/sec' },
+      { id: 'first_50', name: 'Half Century', desc: 'Reach 50 floors', check: g => totalFloorsFromGame(g) >= 50, reward: '+3% mana/sec' },
+      { id: 'first_100', name: 'Century', desc: 'Reach 100 floors', check: g => totalFloorsFromGame(g) >= 100, reward: '+5% mana/sec' },
+      { id: 'first_150', name: 'Spire', desc: 'Reach 150 floors', check: g => totalFloorsFromGame(g) >= 150, reward: '+1% mana/sec' },
+      { id: 'first_200', name: 'Pinnacle', desc: 'Reach 200 floors', check: g => totalFloorsFromGame(g) >= 200, reward: '+1% mana/sec' },
+      { id: 'first_250', name: 'Summit', desc: 'Reach 250 floors', check: g => totalFloorsFromGame(g) >= 250, reward: '+2% mana/sec' },
+      { id: 'time_dilation_1', name: 'Time Walker', desc: 'Cast Time Dilation once', check: g => (g.stats && g.stats.timeDilationCasts) >= 1, reward: null },
+      { id: 'arcane_harvest_10', name: 'Harvester', desc: 'Cast Arcane Harvest 10 times', check: g => (g.stats && g.stats.arcaneHarvestCasts) >= 10, reward: '+1% mana/sec' },
+      { id: 'study_1', name: 'Scholar', desc: 'Study once', check: g => (g.studyCount || 0) >= 1, reward: null },
+      { id: 'study_25', name: 'Sage', desc: 'Study 25 times', check: g => (g.studyCount || 0) >= 25, reward: '+1% mana/sec' },
+      { id: 'prestige_1', name: 'Rebirth', desc: 'Prestige once', check: g => (g.prestige + g.softPrestige) >= 1, reward: null },
+      { id: 'prestige_5', name: 'Veteran', desc: 'Prestige 5 times', check: g => (g.prestige + g.softPrestige) >= 5, reward: '+1% mana/sec' },
+      { id: 'ascend_1', name: 'Ascendant', desc: 'Ascend once', check: g => (g.ascension + (g.ascensionTier2 || 0)) >= 1, reward: null },
+      { id: 'ascend_3', name: 'Transcendent', desc: 'Ascend 3 times', check: g => (g.ascension + (g.ascensionTier2 || 0)) >= 3, reward: '+1% mana/sec' },
+      { id: 'stamina_1000', name: 'Dedicated', desc: 'Spend 1000 total stamina on activities', check: g => (g.stats && g.stats.totalStaminaSpent) >= 1000, reward: '+1% mana/sec' },
+      { id: 'rooms_10', name: 'Diverse', desc: 'Build 10 different room types', check: g => { const sr = g.specialRooms || {}; return SPECIAL_ROOM_NAMES.filter(n => sr[n] && sr[n].built).length >= 10; }, reward: '+1% mana/sec' },
+      { id: 'upgrade_5', name: 'Investor', desc: 'Upgrade 5 rooms to level 2+', check: g => { const sr = g.specialRooms || {}; return SPECIAL_ROOM_NAMES.filter(n => sr[n] && sr[n].built && (sr[n].level || 1) >= 2).length >= 5; }, reward: null },
+      { id: 'trial_no_arcanum_50', name: 'Pure Tower', desc: 'Reach 50 floors without building Arcanum', check: g => totalFloorsFromGame(g) >= 50 && !(g.specialRooms && g.specialRooms.Arcanum && g.specialRooms.Arcanum.built), reward: '+2% mana/sec' },
+    ];
+
+    function achievementManaMultiplier() {
+      let mult = 1;
+      ACHIEVEMENTS.forEach(a => {
+        if (!a.reward || !(game.stats.achievements || []).includes(a.id)) return;
+        const m = a.reward.match(/\+(\d+)%/);
+        if (m) mult += Number(m[1]) / 100;
+      });
+      return mult;
+    }
+
+    function checkAchievements() {
+      const list = game.stats.achievements || [];
+      ACHIEVEMENTS.forEach(a => {
+        if (list.includes(a.id)) return;
+        if (a.check(game)) {
+          game.stats.achievements = [...list, a.id];
+          showToast(a.name, a.desc + (a.reward ? ' · ' + a.reward : ''));
+          playSound('milestone');
+        }
+      });
+    }
+
+    function showToast(title, body) {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.innerHTML = '<div class="toast-title">' + title + '</div>' + (body ? body : '');
+      toastContainer.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
+
+    // -------------------- SOUND --------------------
+    let audioCtx = null;
+    function playSound(type) {
+      if (!game.soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        gain.gain.value = 0.1;
+        if (type === 'click') { osc.frequency.value = 400; osc.type = 'sine'; }
+        else if (type === 'spell') { osc.frequency.value = 600; osc.type = 'sine'; }
+        else { osc.frequency.value = 800; osc.type = 'sine'; }
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.05);
+      } catch (_) {}
+    }
+
+    // -------------------- CLICK MANA --------------------
+    function clickManaGain() {
+      // small, gentle scaling so clicking stays fun without breaking balance
+      const f = totalFloors();
+      const fonts = game.manaFonts || 0;
+      const base = 1 + Math.floor(f / 10) + Math.floor(fonts / 20);
+      const crit = Math.random() < 0.05;
+      return { amount: crit ? base * 5 : base, crit };
+    }
+    function centerClick(e) {
+      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+      game.tutorial.clicked = true;
+      recordActivityOrSpell();
+      const g = clickManaGain();
+      game.mana = Math.min(game.mana + g.amount, maxMana());
+      game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + g.amount;
+      playSound('click');
+      const rect = towerContainer.getBoundingClientRect();
+      const el = document.createElement('div');
+      el.className = 'boost-number' + (g.crit ? ' crit' : '');
+      el.textContent = '+' + formatNum(g.amount);
+      el.style.left = (e.clientX - rect.left - 10) + 'px';
+      el.style.top = (e.clientY - rect.top - 20) + 'px';
+      towerContainer.appendChild(el);
+      el.addEventListener('animationend', () => el.remove());
+
+      const ripple = document.createElement('div');
+      ripple.className = 'click-ripple';
+      ripple.style.left = (e.clientX - rect.left) + 'px';
+      ripple.style.top = (e.clientY - rect.top) + 'px';
+      towerContainer.appendChild(ripple);
+      ripple.addEventListener('animationend', () => ripple.remove());
+    }
+    document.getElementById('main').addEventListener('click', centerClick);
+
+    // -------------------- SPELL COST (Spell Echo + Attune) --------------------
+    function trySpendManaForSpell(baseCost) {
+      const discount = game.attuneDiscount || 0;
+      const actualCost = Math.max(0, baseCost * (1 - discount));
+      const echoLvl = game.passive.spellEcho || 0;
+      const now = Date.now();
+      if (echoLvl > 0 && (game.spellEchoNextFreeAt || 0) <= now) {
+        game.spellEchoNextFreeAt = now + SPELL_ECHO_FREE_COOLDOWN_MS;
+        game.attuneDiscount = 0;
+        return true;
+      }
+      if (game.mana < actualCost) return false;
+      game.mana -= actualCost;
+      game.attuneDiscount = 0;
+      return true;
+    }
+
+    // -------------------- ACTIVE SPELLS --------------------
+    const SPELL_SWAP_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
+    const ACTIVE_SPELLS = [
+      {
+        id: 'timeDilation',
+        name: 'Time Dilation',
+        unlock: 5,
+        focusCost: 15,
+        desc: 'Triples passive mana gain.',
+        hideWhenActive: true,
+        effect: () => {
+          if (!trySpendFocus(15)) return;
+          const casts = game.stats.timeDilationCasts || 0;
+          const baseCost = timeDilationCost(casts);
+          if (!trySpendManaForSpell(baseCost)) return;
+          recordActivityOrSpell();
+          game.stats.timeDilationCasts = casts + 1;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          const mult = spellEffectMultiplier();
+          game.active.boostTD = 3 * mult;
+          game.active.duration = 10 * mult;
+          game.active.timer = game.active.duration;
+          game.active.cooldown = game.active.duration * 1.1;
+          playSound('spell');
+        },
+        costText: () => 'Cost ' + formatNum(timeDilationCost(game.stats.timeDilationCasts || 0)) + ' mana, 15 focus',
+      },
+      {
+        id: 'arcaneHarvest',
+        name: 'Arcane Harvest',
+        unlock: 8,
+        focusCost: 20,
+        desc: 'Double mana/sec for 5 seconds.',
+        hideWhenActive: true,
+        harvestKey: true,
+        effect: () => {
+          if (!trySpendFocus(20)) return;
+          const cost = 200 * Math.pow(1.4, game.stats.arcaneHarvestCasts || 0);
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          game.stats.arcaneHarvestCasts = (game.stats.arcaneHarvestCasts || 0) + 1;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          const mult = spellEffectMultiplier();
+          game.active.boostHarvest = 2 * mult;
+          game.active.harvestTimer = 5 * mult;
+          game.active.harvestDuration = 5 * mult;
+          playSound('spell');
+        },
+        costText: () => 'Cost ' + formatNum(200 * Math.pow(1.4, game.stats.arcaneHarvestCasts || 0)) + ' mana, 20 focus',
+      },
+      {
+        id: 'leylineSurge',
+        name: 'Leyline Surge',
+        unlock: 25,
+        focusCost: 25,
+        desc: '+' + (LEYLINE_TAP_PCT * 100) + '% mana/sec for ' + LEYLINE_TAP_DURATION + 's.',
+        hideWhenActive: true,
+        leylineTapKey: true,
+        effect: () => {
+          if (!trySpendFocus(25)) return;
+          const casts = game.stats.leylineSurgeCasts || 0;
+          const cost = 400 * Math.pow(1.5, casts);
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          game.stats.leylineSurgeCasts = (game.stats.leylineSurgeCasts || 0) + 1;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          const mult = spellEffectMultiplier();
+          game.active.leylineTapPct = LEYLINE_TAP_PCT * mult;
+          game.active.leylineTapTimer = LEYLINE_TAP_DURATION * mult;
+          playSound('spell');
+        },
+        costText: () => 'Cost ' + formatNum(400 * Math.pow(1.5, game.stats.leylineSurgeCasts || 0)) + ' mana, 25 focus',
+      },
+      {
+        id: 'wardOfPreservation',
+        name: 'Ward of Preservation',
+        unlock: 40,
+        desc: 'Next prestige or ascension keeps 5% of current mana.',
+        effect: () => {
+          if (game.wardOfPreservationUsed) return;
+          const cost = 2000;
+          if (!trySpendManaForSpell(cost)) return;
+          game.wardOfPreservationUsed = true;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          playSound('spell');
+          showToast('Ward of Preservation', 'Next reset will keep 5% of current mana.');
+        },
+        costText: () => 'Cost ' + formatNum(2000) + ' mana (one use per run)',
+      },
+      {
+        id: 'ritualOfBinding',
+        name: 'Ritual of Binding',
+        unlock: 30,
+        focusCost: 30,
+        desc: 'Next spell swap has 50% shorter cooldown. 1h cooldown.',
+        effect: () => {
+          if ((game.ritualOfBindingCooldownEnd || 0) > Date.now()) return;
+          if (!trySpendFocus(30)) return;
+          const cost = 800;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          game.ritualOfBindingCooldownEnd = Date.now() + RITUAL_OF_BINDING_COOLDOWN_MS;
+          game.ritualOfBindingNextSwapHalved = true;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          playSound('spell');
+          showToast('Ritual of Binding', 'Next Memorize/Forget will have 50% shorter cooldown.');
+        },
+        costText: () => 'Cost ' + formatNum(800) + ' mana, 30 focus',
+      },
+    ];
+
+    const PASSIVE_SPELLS = [
+      {
+        key: 'arcane',
+        name: 'Leyline Manipulation',
+        unlock: 10,
+        desc: 'Each level +15% to all spell effects',
+        cost: () => 100 * Math.pow(1.6, game.passive.arcane),
+        effect: () => game.passive.arcane++,
+      },
+      {
+        key: 'astral',
+        name: 'Astral Insight',
+        unlock: 20,
+        desc: 'Each level +10% mana/sec per Observatory',
+        cost: () => 500 * Math.pow(1.7, game.passive.astral),
+        effect: () => game.passive.astral++,
+      },
+      {
+        key: 'conduit',
+        name: 'Conduit Mastery',
+        unlock: 15,
+        desc: '+1% mana/sec per Mana Font per level',
+        cost: () => 300 * Math.pow(1.55, game.passive.conduit),
+        effect: () => game.passive.conduit++,
+      },
+      {
+        key: 'towerBond',
+        name: 'Tower Bond',
+        unlock: 35,
+        desc: '+0.1% mana/sec per floor per level',
+        cost: () => 2000 * Math.pow(1.8, game.passive.towerBond),
+        effect: () => game.passive.towerBond++,
+      },
+      {
+        key: 'staminaWell',
+        name: 'Stamina Well',
+        unlock: 18,
+        desc: '+5 max stamina and +1% stamina regen per level',
+        cost: () => 400 * Math.pow(1.6, game.passive.staminaWell),
+        effect: () => game.passive.staminaWell++,
+      },
+      {
+        key: 'spellEcho',
+        name: 'Spell Echo',
+        unlock: 45,
+        desc: 'Once per 15 min, next spell cast is free (no mana cost).',
+        cost: () => 5000 * Math.pow(2, game.passive.spellEcho),
+        effect: () => game.passive.spellEcho++,
+      },
+    ];
+
+    // -------------------- ACTIVITIES --------------------
+    const ACTIVITIES = [
+      {
+        id: 'study',
+        name: 'Study',
+        desc: 'Increases max mana pool by 7%.',
+        costStaminaPct: 0.33,
+        focusCost: 10,
+        effect: () => {
+          if (!trySpendFocus(10)) return;
+          const cost = maxStamina() * 0.33;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          setExhausted();
+          game.studyCount = (game.studyCount || 0) + 1;
+          capMana();
+          playSound('spell');
+        },
+        costText: () => 'Cost 33% max stamina, 10 focus',
+      },
+      {
+        id: 'meditate',
+        name: 'Meditate',
+        desc: '+5% stamina regen until next prestige. Stackable up to ' + MEDITATE_CAP + '.',
+        unlockFloors: 10,
+        costStaminaPct: 0.25,
+        effect: () => {
+          const cost = maxStamina() * 0.25;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          game.meditateStacks = Math.min((game.meditateStacks || 0) + 1, MEDITATE_CAP);
+          playSound('spell');
+        },
+        costText: () => 'Cost 25% max stamina (' + formatNum(Math.floor(maxStamina() * 0.25)) + ')',
+      },
+      {
+        id: 'harvest',
+        name: 'Harvest',
+        desc: 'Instant mana: 2× your current mana/sec.',
+        unlockFloors: 8,
+        costStaminaPct: 0.50,
+        focusCost: 15,
+        effect: () => {
+          if (!trySpendFocus(15)) return;
+          const cost = maxStamina() * 0.50;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          const gain = manaPerSecond() * 2;
+          game.mana = Math.min(game.mana + gain, maxMana());
+          game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
+          playSound('spell');
+        },
+        costText: () => 'Cost 50% max stamina, 15 focus',
+      },
+      {
+        id: 'scry',
+        name: 'Scry',
+        desc: 'Lock next tower room choice (same room offered again).',
+        unlockFloors: 15,
+        costStaminaPct: 0.20,
+        effect: () => {
+          const cost = maxStamina() * 0.20;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          const sr = game.specialRooms || {};
+          const built = SPECIAL_ROOM_NAMES.filter(n => sr[n] && sr[n].built);
+          const available = RANDOM_FLOOR_ROOMS.filter(n => !(sr[n] && sr[n].built));
+          if (available.length > 0) {
+            game.scryLockedRoom = available[Math.floor(Math.random() * available.length)];
+            showToast('Scry', 'Next build will offer: ' + game.scryLockedRoom);
+          }
+          playSound('spell');
+        },
+        costText: () => 'Cost 20% max stamina (' + formatNum(Math.floor(maxStamina() * 0.20)) + ')',
+      },
+      {
+        id: 'transcribe',
+        name: 'Transcribe',
+        desc: 'Permanent +1% spell effect.',
+        unlockFloors: 25,
+        costStaminaPct: 0.40,
+        focusCost: 15,
+        effect: () => {
+          if (!trySpendFocus(15)) return;
+          const cost = maxStamina() * 0.40;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          setExhausted();
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          game.transcribeBonusPct = (game.transcribeBonusPct || 0) + 1;
+          playSound('spell');
+        },
+        costText: () => 'Cost 40% max stamina, 15 focus',
+      },
+      {
+        id: 'ritual',
+        name: 'Ritual',
+        desc: '2× all gains for 60s. 30 min cooldown.',
+        unlockFloors: 35,
+        costStaminaPct: 0.80,
+        focusCost: 25,
+        cooldownMs: RITUAL_ACTIVITY_COOLDOWN_MS,
+        effect: () => {
+          if (!trySpendFocus(25)) return;
+          const cost = maxStamina() * 0.80;
+          if (game.stamina < cost) return;
+          if ((game.ritualActivityCooldownEnd || 0) > Date.now()) return;
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          setExhausted();
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          game.ritualBuffEnd = Date.now() + 60 * 1000;
+          game.ritualActivityCooldownEnd = Date.now() + RITUAL_ACTIVITY_COOLDOWN_MS;
+          playSound('spell');
+          showToast('Ritual', '2× all gains for 60s.');
+        },
+        costText: () => 'Cost 80% max stamina, 25 focus',
+      },
+      {
+        id: 'attune',
+        name: 'Attune',
+        desc: 'Next spell cast costs 20% less mana.',
+        unlockFloors: 20,
+        costStaminaPct: 0.15,
+        effect: () => {
+          const cost = maxStamina() * 0.15;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          game.attuneDiscount = 0.20;
+          playSound('spell');
+          showToast('Attune', 'Next spell 20% cheaper.');
+        },
+        costText: () => 'Cost 15% max stamina (' + formatNum(Math.floor(maxStamina() * 0.15)) + ')',
+      },
+    ];
+
+    // -------------------- RENDER --------------------
+    function renderAll() { renderUI(); renderSpells(); renderTower(); renderActivities(); }
+
+    function renderGoalHint() {
+      if (!goalHintEl) return;
+      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+      if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true };
+      if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
+
+      if (goalBarEl) goalBarEl.style.display = (!game.settings.showTutorial || game.tutorial.done) ? 'none' : '';
+      if (!game.settings.showTutorial || game.tutorial.done) return;
+
+      // Quick-start tutorial (3 tiny tasks), then the banner disappears.
+      const task1 = !!game.tutorial.clicked;
+      const task2 = (game.manaFonts || 0) >= 1;
+      const task3 = totalFloors() >= 1;
+      const doneCount = (task1 ? 1 : 0) + (task2 ? 1 : 0) + (task3 ? 1 : 0);
+
+      if (doneCount >= 3) {
+        game.tutorial.done = true;
+        if (!game.tutorial.completedToast) {
+          game.tutorial.completedToast = true;
+          showToast('All set', 'Tutorial complete. You can keep building your tower!');
+        }
+        if (goalBarEl) goalBarEl.style.display = 'none';
+        return;
+      }
+
+      let nextLine = '';
+      if (!task1) nextLine = 'Click the tower area to collect mana.';
+      else if (!task2) nextLine = 'Buy a Mana Font in the Tower tab (tip: press <span class="k">M</span>).';
+      else nextLine = 'Raise your first tower floor in the Tower tab.';
+
+      const box = (done) => done ? '&#10003;' : '&#9726;';
+      const hint =
+        '<strong>Quick start (' + doneCount + '/3):</strong> ' + nextLine +
+        '<br><span class="muted">' + box(task1) + ' Click once to collect mana</span>' +
+        '<br><span class="muted">' + box(task2) + ' Buy 1 Mana Font</span>' +
+        '<br><span class="muted">' + box(task3) + ' Raise 1 tower floor</span>';
+      if (goalHintEl.innerHTML !== hint) goalHintEl.innerHTML = hint;
+    }
+
+    function updateBadges() {
+      // Tower: can buy font / build floor / upgrade a room
+      const canBuyFont = (game.mana || 0) >= manaFontCost();
+      const effCost = effectiveFloorCost();
+      const floorStamCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
+      const canBuild = (game.mana || 0) >= effCost && (game.stamina || 0) >= floorStamCost;
+      let canUpgrade = false;
+      const sr = game.specialRooms || {};
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        if (canUpgrade) return;
+        const r = sr[name];
+        if (!r || !r.built) return;
+        if ((game.mana || 0) >= upgradeCost(name)) canUpgrade = true;
+      });
+      setTabBadge('towerModal', canBuyFont || canBuild || canUpgrade);
+
+      // Activities: any unlocked activity affordable (basic check)
+      const now = Date.now();
+      let canAct = false;
+      if (typeof ACTIVITIES !== 'undefined') {
+        for (const a of ACTIVITIES) {
+          if (totalFloors() < a.unlockFloors) continue;
+          const stamCost = (a.costStaminaPct || 0) * maxStamina();
+          const focusCost = a.focusCost || 0;
+          if ((game.stamina || 0) < stamCost) continue;
+          if ((game.focus || 0) < focusCost) continue;
+          if (a.id === 'ritual' && (game.ritualActivityCooldownEnd || 0) > now) continue;
+          canAct = true;
+          break;
+        }
+      }
+      setTabBadge('activitiesModal', canAct);
+
+      // Grimoire: spell swap ready and there exists something new to memorize, or passive upgrade affordable
+      const swapReady = canSwapSpell();
+      const usedSlots = (game.memorizedSpells || []).length;
+      const totalSlots = maxSpellSlots();
+      let canMemorize = false;
+      if (swapReady && usedSlots < totalSlots) {
+        const f = totalFloors();
+        const seen = new Set(game.memorizedSpells || []);
+        const anyUnlockedUnmemorized = (list, isActive) => list.some(s => f >= s.unlock && !seen.has(getSpellId(s, isActive)));
+        if (typeof ACTIVE_SPELLS !== 'undefined' && anyUnlockedUnmemorized(ACTIVE_SPELLS, true)) canMemorize = true;
+        if (typeof PASSIVE_SPELLS !== 'undefined' && anyUnlockedUnmemorized(PASSIVE_SPELLS, false)) canMemorize = true;
+      }
+      let canPassiveBuy = false;
+      if (typeof PASSIVE_SPELLS !== 'undefined') {
+        for (const s of PASSIVE_SPELLS) {
+          if (totalFloors() < s.unlock) continue;
+          const spellId = getSpellId(s, false);
+          if (!isMemorized(spellId)) continue;
+          const cost = (s.cost ? s.cost() * SCALE : 0);
+          if ((game.mana || 0) >= cost && cost > 0) { canPassiveBuy = true; break; }
+        }
+      }
+      setTabBadge('grimoireModal', canMemorize || canPassiveBuy);
+
+      // Ascension: can ascend now
+      setTabBadge('ascensionModal', totalFloors() >= ASCENSION_FLOOR);
+    }
+
+    function renderUI() {
+      mana.textContent = formatNum(game.mana);
+      manaMaxEl.textContent = formatNum(maxMana());
+      manaPerSec.textContent = formatRate(manaPerSecond()) + '/s';
+      staminaEl.textContent = formatNum(game.stamina);
+      staminaMaxEl.textContent = formatNum(maxStamina());
+      staminaPerSecEl.textContent = formatRate(staminaPerSecond()) + '/s';
+      if (focusEl) focusEl.textContent = formatNum(game.focus || 0);
+      if (focusMaxEl) focusMaxEl.textContent = formatNum(maxFocus());
+      if (focusPerSecEl) focusPerSecEl.textContent = formatRate(focusPerSecond()) + '/s';
+      setMiniBar(manaFillEl, game.mana || 0, maxMana());
+      setMiniBar(staminaFillEl, game.stamina || 0, maxStamina());
+      setMiniBar(focusFillEl, game.focus || 0, maxFocus());
+
+      // POLISH: Resource full glow effect
+      updateResourceFullState(manaBlock, game.mana, maxMana());
+      updateResourceFullState(staminaBlock, game.stamina, maxStamina());
+      updateResourceFullState(focusBlock, game.focus || 0, maxFocus());
+
+      const exhaustedEnd = game.exhaustedUntil || 0;
+      if (exhaustedHint) {
+        if (exhaustedEnd > Date.now()) {
+          exhaustedHint.style.display = 'block';
+          const sec = Math.ceil((exhaustedEnd - Date.now()) / 1000);
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
+          exhaustedHint.textContent = 'Exhausted: ' + m + ':' + (s < 10 ? '0' : '') + s + ' (50% stamina regen)';
+        } else {
+          exhaustedHint.style.display = 'none';
+        }
+      }
+      floors.textContent = totalFloors();
+      manaFontCostEl.textContent = 'Cost: ' + formatNum(manaFontCost()) + ' mana (Shift: x10, Ctrl: max)';
+      // POLISH: Calculate mana font gain preview
+      const currentMps = manaPerSecond();
+      const mpsAfterFont = currentMps + MANA_FONT_RATE * (1 + totalFloors() * FLOOR_BONUS);
+      const fontGainPct = currentMps > 0 ? ((mpsAfterFont - currentMps) / currentMps * 100).toFixed(1) : '0';
+      if (manaFontPreview) manaFontPreview.textContent = '+' + formatRate(mpsAfterFont - currentMps) + '/s (+' + fontGainPct + '%)';
+      const effCost = effectiveFloorCost();
+      const floorStamCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
+      towerCostEl.textContent = game.nextFloorBonus ? 'Next floor: Free (+ ' + formatNum(floorStamCost) + ' stamina)' : (game.nextFloorCursed ? 'Next floor: ' + formatNum(effCost) + ' mana, ' + formatNum(floorStamCost) + ' stamina (2× cost, 2× effect)' : 'Cost: ' + formatNum(effCost) + ' mana, ' + formatNum(floorStamCost) + ' stamina');
+      // POLISH: Calculate tower floor gain preview
+      const floorBonus = (totalFloors() + 1) * FLOOR_BONUS - totalFloors() * FLOOR_BONUS;
+      const towerGainPct = currentMps > 0 ? (floorBonus * 100).toFixed(1) : '1';
+      if (towerPreview) towerPreview.textContent = '+' + towerGainPct + '% mana/sec';
+
+      const canFullPrestige = totalFloors() >= PRESTIGE_FLOOR;
+      const canSoftPrestige = totalFloors() >= PRESTIGE_SOFT_FLOOR && totalFloors() < PRESTIGE_FLOOR;
+      prestigeSection.style.display = (canFullPrestige || canSoftPrestige) ? 'block' : 'none';
+      const prestigeTokensEl = document.getElementById('prestigeTokensEl');
+      const prestigeTokenChoices = document.getElementById('prestigeTokenChoices');
+      if (prestigeTokensEl && (canFullPrestige || canSoftPrestige)) prestigeTokensEl.textContent = 'Prestige Tokens: ' + (game.prestigeTokens || 0);
+      if (prestigeTokenChoices) {
+        if (!canFullPrestige) prestigeTokenChoices.innerHTML = '';
+        else {
+          prestigeTokenChoices.innerHTML = '';
+          const tok = game.prestigeTokens || 0;
+          const choice = game.prestigeTokenChoice;
+          const addOpt = (key, label) => {
+            const btn = document.createElement('button');
+            btn.className = 'spell-slot-btn';
+            btn.textContent = (choice === key ? '[X] ' : '') + label + ' (1 token)';
+            btn.disabled = tok < 1;
+            btn.onclick = () => { game.prestigeTokenChoice = game.prestigeTokenChoice === key ? null : key; renderAll(); };
+            prestigeTokenChoices.appendChild(btn);
+          };
+          addOpt('font', 'Keep 1 Mana Font');
+          addOpt('study', 'Keep 5% Study count');
+        }
+      }
+      if (canFullPrestige) {
+        const nextBonus = PRESTIGE_BONUS * 100;
+        prestigeDesc.textContent = 'Reset tower for +' + nextBonus + '% mana/sec (permanent). You have ' + totalFloors() + ' floors.';
+        prestigeBtn.textContent = 'Prestige (+10%)';
+        prestigeBtn.onclick = () => {
+          if (!confirm('Prestige now? You will reset floors, rooms, and upgrades but gain +10% mana/sec permanently. Current bonus: ' + (game.prestige * 10) + '% → ' + ((game.prestige + 1) * 10) + '%.')) return;
+          doPrestige(false);
+        };
+      } else if (canSoftPrestige) {
+        prestigeDesc.textContent = 'Soft Prestige: reset for +5% mana/sec. Reach ' + PRESTIGE_FLOOR + ' floors for full +10%.';
+        prestigeBtn.textContent = 'Soft Prestige (+5%)';
+        prestigeBtn.onclick = () => {
+          if (!confirm('Soft Prestige? Reset for +5% mana/sec. You have ' + totalFloors() + ' floors.')) return;
+          doPrestige(true);
+        };
+      }
+
+      const canAscend = totalFloors() >= ASCENSION_FLOOR;
+      const canAscendTier2 = totalFloors() >= ASCENSION_FLOOR_2;
+      ascensionDesc.textContent = canAscend
+        ? (canAscendTier2
+          ? 'Ascend Tier 2 (150 floors): +3% mana/sec. Or ascend at 100 for +2%. Current: ' + (game.ascension * 2 + (game.ascensionTier2 || 0) * 3) + '% total.'
+          : 'Ascend: +2% mana/sec (100 floors). Reach 150 for Tier 2 (+3%). Current: ' + totalFloors() + ' floors.')
+        : 'Reach ' + ASCENSION_FLOOR + ' floors to ascend. Current: ' + totalFloors() + ' floors.';
+      ascendBtn.onclick = () => {
+        if (totalFloors() < ASCENSION_FLOOR) return;
+        if (!confirm('Ascend? This resets prestige, soft prestige, floors, and rooms. You keep ascension bonus. Continue?')) return;
+        const savedMana = game.wardOfPreservationUsed ? game.mana * 0.05 : 0;
+        const hallLvl = countRooms('Hall of Preservation');
+        const savedFloorsKept = hallLvl >= 1 ? Math.floor(totalFloors() * PRESTIGE_KEEP_FLOORS_PCT) : 0;
+        game.stats.totalFloorsEver = (game.stats.totalFloorsEver || 0) + totalFloors();
+        if (totalFloors() >= ASCENSION_FLOOR_2) game.ascensionTier2 = (game.ascensionTier2 || 0) + 1;
+        else game.ascension++;
+        game.prestige = 0;
+        game.softPrestige = 0;
+        game.specialRooms = initialSpecialRooms();
+        game.memorizedSpells = (game.memorizedSpells || []).slice(0, maxSpellSlots());
+        game.stairs = 0;
+        game.floorsKept = savedFloorsKept;
+        game.mana = savedMana;
+        game.manaFonts = 0;
+        game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0 };
+        game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
+        game.studyCount = 0;
+        game.stamina = maxStamina();
+        game.wardOfPreservationUsed = false;
+        game.meditateStacks = 0;
+        game.scryLockedRoom = null;
+        game.ritualBuffEnd = 0;
+        game.attuneDiscount = 0;
+        game.nextFloorDuplicate = null;
+        game.nextFloorCursed = false;
+        game.nextFloorBonus = false;
+        renderAll();
+        playSound('milestone');
+      };
+      ascendBtn.disabled = !canAscend;
+
+      const hasAscended = (game.ascension || 0) + (game.ascensionTier2 || 0) >= 1;
+      const showParagon = hasAscended && totalFloors() >= PARAGON_FLOOR_MIN;
+      if (paragonSection) paragonSection.style.display = showParagon ? 'block' : 'none';
+      if (showParagon && paragonXpEl) {
+        const xp = game.paragonXp || 0;
+        paragonXpEl.textContent = 'Paragon XP: ' + formatNum(xp);
+      }
+      if (showParagon && paragonNodes) {
+        const s = game.paragonSpent || { manaPct: 0, spellEffect: 0, stamina: 0 };
+        const xp = game.paragonXp || 0;
+        paragonNodes.innerHTML = '';
+        const addNode = (key, label, maxLvl) => {
+          const cur = s[key] || 0;
+          const btn = document.createElement('button');
+          btn.textContent = label + ' (' + cur + '/' + maxLvl + ') — ' + PARAGON_NODE_COST + ' XP';
+          btn.disabled = xp < PARAGON_NODE_COST || cur >= maxLvl;
+          btn.onclick = () => {
+            if (game.paragonXp < PARAGON_NODE_COST) return;
+            if ((s[key] || 0) >= maxLvl) return;
+            game.paragonXp -= PARAGON_NODE_COST;
+            if (!game.paragonSpent) game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0 };
+            game.paragonSpent[key] = (game.paragonSpent[key] || 0) + 1;
+            renderAll();
+          };
+          paragonNodes.appendChild(btn);
+        };
+        addNode('manaPct', '+0.5% mana/sec', 20);
+        addNode('spellEffect', '+1% spell effect', 15);
+        addNode('stamina', '+5 max stamina', 10);
+      }
+
+      const ascensionTabUnlocked = totalFloors() >= ASCENSION_TAB_UNLOCK;
+      if (ascensionTab) {
+        if (ascensionTabUnlocked) {
+          ascensionTab.classList.remove('tab-locked');
+          ascensionTab.title = 'Ascension';
+        } else {
+          ascensionTab.classList.add('tab-locked');
+          ascensionTab.title = 'Unlocks at ' + ASCENSION_TAB_UNLOCK + ' floors';
+        }
+      }
+
+      renderRoomSummary();
+      renderTowerUpgrades();
+      renderTimeDilationStatus();
+      renderGoalHint();
+      updateBadges();
+    }
+
+    function renderTowerUpgrades() {
+      towerUpgradeButtons.innerHTML = '';
+      const sr = game.specialRooms || {};
+      const built = SPECIAL_ROOM_NAMES.filter(name => sr[name] && sr[name].built);
+      if (built.length === 0) return;
+      const title = document.createElement('p');
+      title.className = 'section-title';
+      title.textContent = 'Upgrade built rooms';
+      towerUpgradeButtons.appendChild(title);
+      built.forEach(name => {
+        const r = sr[name];
+        const cost = upgradeCost(name);
+        const btn = document.createElement('button');
+        btn.innerHTML = 'Upgrade ' + name + '<span class="cost">Cost: ' + formatNum(cost) + ' mana</span>';
+        btn.onclick = () => {
+          if (game.mana < cost) return;
+          game.mana -= cost;
+          r.level = (r.level || 1) + 1;
+          renderAll();
+        };
+        if (game.mana < cost) btn.disabled = true;
+        towerUpgradeButtons.appendChild(btn);
+      });
+    }
+
+    function renderActivities() {
+      activitiesDiv.innerHTML = '';
+      const floors = Number(totalFloors()) || 0;
+      const stamina = Number(game.stamina) || 0;
+      const focus = Number(game.focus) || 0;
+      const EPS = 1e-3;
+      ACTIVITIES.forEach(a => {
+        const btn = document.createElement('button');
+        btn.textContent = a.name;
+        const unlockFloors = Number(a.unlockFloors) || 0;
+        const locked = unlockFloors > 0 && floors < unlockFloors;
+        let detail = a.costText ? a.costText() : '';
+        let cooldownPct = 0;
+        if (a.cooldownMs) {
+          const end = game.ritualActivityCooldownEnd || 0;
+          const rem = Math.max(0, (end - Date.now()) / 1000);
+          if (rem > 0) {
+            const m = Math.floor(rem / 60);
+            const s = Math.floor(rem % 60);
+            detail = 'Available in ' + m + ':' + (s < 10 ? '0' : '') + s;
+            // POLISH: Calculate cooldown progress for visual bar
+            cooldownPct = (1 - (rem * 1000) / a.cooldownMs) * 100;
+          }
+        }
+        const desc = document.createElement('span');
+        desc.className = 'desc';
+        desc.innerHTML = a.desc + '<br><span class="detail">' + detail + '</span>';
+        btn.appendChild(desc);
+        // POLISH: Add cooldown overlay bar
+        if (cooldownPct > 0 && cooldownPct < 100) {
+          const overlay = document.createElement('div');
+          overlay.className = 'cooldown-overlay';
+          overlay.style.width = cooldownPct.toFixed(1) + '%';
+          btn.appendChild(overlay);
+        }
+        const costAmount = a.costStaminaPct != null ? maxStamina() * a.costStaminaPct : 0;
+        const onCooldown = a.cooldownMs && (game.ritualActivityCooldownEnd || 0) > Date.now();
+        const lowFocus = a.focusCost != null && focus < a.focusCost - EPS;
+        const lowStamina = a.costStaminaPct != null && stamina < costAmount - EPS;
+        btn.onclick = () => {
+          if (locked) return;
+          if (a.costStaminaPct != null && game.stamina < costAmount) return;
+          if (onCooldown) return;
+          a.effect();
+          renderAll();
+        };
+        btn.disabled = locked || lowFocus || lowStamina || onCooldown;
+        if (locked) {
+          const hint = document.createElement('span');
+          hint.className = 'unlock-hint';
+          hint.textContent = 'Unlocks at ' + unlockFloors + ' floors';
+          btn.appendChild(hint);
+        }
+        activitiesDiv.appendChild(btn);
+      });
+    }
+
+    function renderTimeDilationStatus() {
+      const active = game.active && game.active.timer > 0;
+      const harvestActive = game.active && game.active.harvestTimer > 0;
+      timeDilationStatus.style.display = active || harvestActive ? 'block' : 'none';
+      if (!active && !harvestActive) return;
+      const boost = (game.active.boostTD || 1) * (game.active.boostHarvest || 1);
+      if (active) {
+        const dur = (game.active.duration && game.active.duration > 0) ? game.active.duration : game.active.timer;
+        const frac = Math.max(0, Math.min(1, game.active.timer / dur));
+        timeDilationFill.style.width = (frac * 100).toFixed(2) + '%';
+        timeDilationTime.textContent = Math.max(0, game.active.timer).toFixed(1) + 's left';
+        timeDilationBoost.textContent = 'Boost: x' + boost.toFixed(2);
+      } else {
+        const dur = game.active.harvestDuration || 5;
+        const frac = Math.max(0, Math.min(1, game.active.harvestTimer / dur));
+        timeDilationFill.style.width = (frac * 100).toFixed(2) + '%';
+        timeDilationTime.textContent = 'Arcane Harvest: ' + game.active.harvestTimer.toFixed(1) + 's';
+        timeDilationBoost.textContent = 'Boost: x' + boost.toFixed(2);
+      }
+    }
+
+    function formatSwapCooldown(sec) {
+      if (sec <= 0) return 'Ready to swap';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return 'Next swap in: ' + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function renderSpells() {
+      const usedSlots = (game.memorizedSpells || []).length;
+      const totalSlots = maxSpellSlots();
+      grimoireSpellSlotsEl.textContent = 'Spell slots: ' + usedSlots + ' / ' + totalSlots;
+      const swapRem = spellSwapCooldownRemaining();
+      grimoireSwapTimerEl.textContent = formatSwapCooldown(swapRem);
+      // POLISH: Show swap cooldown progress bar
+      const swapCooldownMs = effectiveSpellSwapCooldownMs();
+      const swapRemMs = swapRem * 1000;
+      const swapPct = swapRemMs > 0 ? (1 - swapRemMs / swapCooldownMs) * 100 : 100;
+      if (swapCooldownFill) swapCooldownFill.style.width = Math.min(100, Math.max(0, swapPct)).toFixed(1) + '%';
+
+      activeSpellsDiv.innerHTML = '';
+      passiveSpellsDiv.innerHTML = '';
+
+      const tdActive = !!(game.active && game.active.timer > 0);
+      const harvestActive = !!(game.active && game.active.harvestTimer > 0);
+      const floors = totalFloors();
+      const swapReady = canSwapSpell();
+
+      const nextLockedActive = ACTIVE_SPELLS.find(s => floors < s.unlock);
+      const activeToShow = ACTIVE_SPELLS.filter(s => floors >= s.unlock || s === nextLockedActive);
+
+      const leylineSurgeActive = !!(game.active && game.active.leylineTapTimer > 0);
+      activeToShow.forEach(s => {
+        const spellId = getSpellId(s, true);
+        const memorized = isMemorized(spellId);
+        const hideWhenActive = s.hideWhenActive && ((s.name === 'Time Dilation' && tdActive) || (s.harvestKey && harvestActive) || (s.leylineTapKey && leylineSurgeActive));
+        if (hideWhenActive) return;
+        const onSpellCooldown = s.name === 'Time Dilation' && game.active && game.active.cooldown > 0;
+        if (onSpellCooldown) return;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'spell-row';
+        const btn = document.createElement('button');
+        btn.textContent = s.name;
+        if (floors < s.unlock) {
+          btn.disabled = true;
+          const hint = document.createElement('span');
+          hint.className = 'unlock-hint';
+          hint.textContent = 'Unlocks at ' + s.unlock + ' floors';
+          hint.style.display = 'block';
+          btn.appendChild(hint);
+          wrap.appendChild(btn);
+        } else if (memorized) {
+          const desc = document.createElement('span');
+          desc.className = 'desc';
+          desc.innerHTML = s.desc + '<br><span class="detail">' + (s.costText ? s.costText() : '') + '</span>';
+          btn.appendChild(desc);
+          btn.onclick = () => s.effect();
+          const lowFocus = (s.focusCost != null && (game.focus || 0) < s.focusCost);
+          btn.disabled = lowFocus;
+          const forgetBtn = document.createElement('button');
+          forgetBtn.textContent = 'Forget';
+          forgetBtn.className = 'spell-slot-btn';
+          forgetBtn.disabled = !swapReady;
+          forgetBtn.onclick = (e) => { e.stopPropagation(); forgetSpell(spellId); };
+          wrap.appendChild(btn);
+          wrap.appendChild(forgetBtn);
+        } else {
+          const desc = document.createElement('span');
+          desc.className = 'desc';
+          desc.innerHTML = s.desc + '<br><span class="detail">Not memorized</span>';
+          btn.appendChild(desc);
+          btn.disabled = true;
+          const memBtn = document.createElement('button');
+          memBtn.textContent = 'Memorize';
+          memBtn.className = 'spell-slot-btn';
+          memBtn.disabled = !swapReady || usedSlots >= totalSlots;
+          memBtn.onclick = (e) => { e.stopPropagation(); memorizeSpell(spellId); };
+          wrap.appendChild(btn);
+          wrap.appendChild(memBtn);
+        }
+        activeSpellsDiv.appendChild(wrap);
+      });
+
+      const nextLockedPassive = PASSIVE_SPELLS.find(s => floors < s.unlock);
+      const passiveToShow = PASSIVE_SPELLS.filter(s => floors >= s.unlock || s === nextLockedPassive);
+
+      passiveToShow.forEach(s => {
+        const spellId = getSpellId(s, false);
+        const memorized = isMemorized(spellId);
+        const wrap = document.createElement('div');
+        wrap.className = 'spell-row';
+        const btn = document.createElement('button');
+        btn.textContent = s.name;
+        if (floors < s.unlock) {
+          btn.disabled = true;
+          const hint = document.createElement('span');
+          hint.className = 'unlock-hint';
+          hint.textContent = 'Unlocks at ' + s.unlock + ' floors';
+          hint.style.display = 'block';
+          btn.appendChild(hint);
+          wrap.appendChild(btn);
+        } else if (memorized) {
+          const level = s.key ? (game.passive[s.key] ?? 0) : 0;
+          const cost = s.cost ? s.cost() * SCALE : 0;
+          const desc = document.createElement('span');
+          desc.className = 'desc';
+          desc.innerHTML = s.desc + '<br><span class="detail">Level ' + level + ' · Cost ' + formatNum(cost) + ' mana</span>';
+          btn.appendChild(desc);
+          btn.onclick = () => {
+            const c = s.cost() * SCALE;
+            if (game.mana >= c) {
+              game.mana -= c;
+              s.effect();
+              renderAll();
+            }
+          };
+          const forgetBtn = document.createElement('button');
+          forgetBtn.textContent = 'Forget';
+          forgetBtn.className = 'spell-slot-btn';
+          forgetBtn.disabled = !swapReady;
+          forgetBtn.onclick = (e) => { e.stopPropagation(); forgetSpell(spellId); };
+          wrap.appendChild(btn);
+          wrap.appendChild(forgetBtn);
+        } else {
+          const level = s.key ? (game.passive[s.key] ?? 0) : 0;
+          const desc = document.createElement('span');
+          desc.className = 'desc';
+          desc.innerHTML = s.desc + '<br><span class="detail">Level ' + level + ' · Not memorized</span>';
+          btn.appendChild(desc);
+          btn.disabled = true;
+          const memBtn = document.createElement('button');
+          memBtn.textContent = 'Memorize';
+          memBtn.className = 'spell-slot-btn';
+          memBtn.disabled = !swapReady || (game.memorizedSpells || []).length >= maxSpellSlots();
+          memBtn.onclick = (e) => { e.stopPropagation(); memorizeSpell(spellId); };
+          wrap.appendChild(btn);
+          wrap.appendChild(memBtn);
+        }
+        passiveSpellsDiv.appendChild(wrap);
+      });
+    }
+
+    function towerTier(f) { if (f >= 40) return 4; if (f >= 30) return 3; if (f >= 10) return 2; return 1; }
+    function renderTower() {
+      towerContainer.innerHTML = '';
+      const sr = game.specialRooms || {};
+      const blocks = [];
+      for (let i = 0; i < (game.stairs || 0); i++) {
+        const side = i % 3 === 1 ? 'side-left' : (i % 3 === 2 ? 'side-right' : '');
+        blocks.push({ type: 'Stairs', side });
+      }
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        if (sr[name] && sr[name].built) blocks.push({ type: name, level: sr[name].level || 1, side: blocks.length % 2 ? 'side-right' : 'side-left' });
+      });
+      blocks.forEach((b, i) => {
+        const el = document.createElement('div');
+        const height = i + 1;
+        const isTop = i === blocks.length - 1;
+        const addCrenel = isTop && height >= 6;
+        const addTurrets = isTop && height >= 14;
+        const tier = towerTier(height);
+        el.className = 'tower-block tier-' + tier + (b.side ? ' ' + b.side : '');
+        const label = b.level ? b.type + ' Lv.' + b.level : b.type;
+        const topper = (addCrenel || addTurrets)
+          ? '<div class="tower-topper">' +
+              (addCrenel ? '<div class="tower-crenel"></div>' : '') +
+              (addTurrets ? '<div class="tower-turrets"><div class="turret left"></div><div class="turret right"></div></div>' : '') +
+            '</div>'
+          : '';
+        // windows: show more as the tower grows (keeps silhouette clean, adds detail)
+        const windowCount = Math.min(6, Math.max(0, Math.floor(height / 6)));
+        let windowsHtml = '';
+        if (windowCount > 0) {
+          const win = [];
+          for (let w = 0; w < windowCount; w++) win.push('<div class="tower-window"></div>');
+          windowsHtml = '<div class="tower-windows">' + win.join('') + '</div>';
+        }
+        el.innerHTML = topper + windowsHtml + '<div class="room">' + label + '</div>';
+        if (b.type !== 'Stairs' && ROOMS[b.type]) {
+          el.style.cursor = 'pointer';
+          el.dataset.room = b.type;
+          el.title = ROOMS[b.type].desc || '';
+          el.onclick = () => openRoomDetail(b.type);
+        } else if (b.type === 'Stairs' && ROOMS.Stairs) el.title = ROOMS.Stairs.desc || '';
+        towerContainer.appendChild(el);
+      });
+    }
+
+    function renderRoomSummary() {
+      const sr = game.specialRooms || {};
+      let html = '<strong>Rooms</strong><br>';
+      if ((game.stairs || 0) > 0) html += 'Stairs x' + game.stairs + '<br><span class="cost">' + (ROOMS.Stairs && ROOMS.Stairs.desc) + '</span><br>';
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        const r = sr[name];
+        if (r && r.built) {
+          const level = r.level || 1;
+          html += name + ' (Lv.' + level + ')<br><span class="cost">' + (ROOMS[name] && ROOMS[name].desc) + '</span><br>';
+        }
+      });
+      roomSummary.innerHTML = html || 'No rooms yet.';
+    }
+
+    function doPrestige(soft) {
+      const savedMana = game.wardOfPreservationUsed ? game.mana * 0.05 : 0;
+      const hallLvl = countRooms('Hall of Preservation');
+      const savedFloorsKept = hallLvl >= 1 ? Math.floor(totalFloors() * PRESTIGE_KEEP_FLOORS_PCT) : 0;
+      game.stats.totalFloorsEver = (game.stats.totalFloorsEver || 0) + totalFloors();
+      const fullPrestige = !soft;
+      if (fullPrestige) game.prestigeTokens = (game.prestigeTokens || 0) + 1;
+      const choice = game.prestigeTokenChoice;
+      const keepManaFont = fullPrestige && choice === 'font' && game.prestigeTokens >= 1;
+      const keepStudyPct = fullPrestige && choice === 'study' && game.prestigeTokens >= 1;
+      if (keepManaFont) game.prestigeTokens--;
+      if (keepStudyPct) game.prestigeTokens--;
+      const studyKept = keepStudyPct ? Math.floor((game.studyCount || 0) * 0.05) : 0;
+      game.prestige = soft ? game.prestige : game.prestige + 1;
+      game.softPrestige = soft ? game.softPrestige + 1 : game.softPrestige;
+      game.mana = savedMana;
+      game.manaFonts = keepManaFont ? 1 : 0;
+      game.specialRooms = initialSpecialRooms();
+      game.memorizedSpells = (game.memorizedSpells || []).slice(0, maxSpellSlots());
+      game.stairs = 0;
+      game.floorsKept = savedFloorsKept;
+      game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0 };
+      game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
+      game.studyCount = studyKept;
+      game.stamina = maxStamina();
+      game.wardOfPreservationUsed = false;
+      game.prestigeTokenChoice = null;
+      game.meditateStacks = 0;
+      game.scryLockedRoom = null;
+      game.ritualBuffEnd = 0;
+      game.attuneDiscount = 0;
+      game.nextFloorDuplicate = null;
+      game.nextFloorCursed = false;
+      game.nextFloorBonus = false;
+      game.stats.timeDilationCasts = 0;
+      game.stats.arcaneHarvestCasts = 0;
+      renderAll();
+      playSound('milestone');
+    }
+
+    // -------------------- ROOM MODAL --------------------
+    function openRoomSelect() {
+      roomModal.style.display = 'flex';
+      roomChoices.innerHTML = '';
+      const sr = game.specialRooms || {};
+      if (totalFloors() >= 1 && !game.nextFloorCursed && !game.nextFloorBonus) {
+        if (Math.random() < 0.12) game.nextFloorCursed = true;
+        else if (Math.random() < 0.12) game.nextFloorBonus = true;
+      }
+      const built = SPECIAL_ROOM_NAMES.filter(n => sr[n] && sr[n].built);
+      const duplicateRoomChoice = built.length > 0 && Math.random() < 0.15 ? built[Math.floor(Math.random() * built.length)] : null;
+      const cost = effectiveFloorCost();
+      const floorStaminaCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
+      const addCard = (name, info) => {
+        const card = document.createElement('div');
+        card.className = 'room-card';
+        let label = name;
+        if (game.nextFloorCursed) label += ' (Cursed: 1.5× cost, 2× effect)';
+        else if (game.nextFloorBonus) label += ' (Bonus: free)';
+        card.textContent = label;
+        const tooltip = document.createElement('span');
+        tooltip.className = 'tooltip';
+        tooltip.textContent = info.desc;
+        card.appendChild(tooltip);
+        if (!info.unlock()) {
+          card.classList.add('disabled');
+          const hint = document.createElement('span');
+          hint.className = 'unlock-hint';
+          hint.textContent = 'Unlocks at ' + info.unlockFloors + ' floors';
+          card.appendChild(hint);
+        } else {
+          card.onclick = () => {
+            if (game.mana < cost || game.stamina < floorStaminaCost) {
+              showToast('Need more resources', 'This floor costs ' + formatNum(cost) + ' mana and ' + formatNum(Math.floor(floorStaminaCost)) + ' stamina.');
+              return;
+            }
+            game.mana -= cost;
+            game.stamina -= floorStaminaCost;
+            if (!sr[name]) game.specialRooms[name] = { built: false, level: 0 };
+            game.specialRooms[name].built = true;
+            game.specialRooms[name].level = game.nextFloorCursed ? 2 : 1;
+            game.nextFloorCursed = false;
+            game.nextFloorBonus = false;
+            game.scryLockedRoom = null;
+            roomModal.style.display = 'none';
+            renderAll();
+          };
+        }
+        roomChoices.appendChild(card);
+      };
+      const addDuplicateCard = (roomName) => {
+        const card = document.createElement('div');
+        card.className = 'room-card';
+        card.textContent = 'Duplicate: +1 lvl to ' + roomName;
+        const info = ROOMS[roomName];
+        const tooltip = document.createElement('span');
+        tooltip.className = 'tooltip';
+        tooltip.textContent = (info && info.desc) ? info.desc : 'Gain +1 level to this room.';
+        card.appendChild(tooltip);
+        card.onclick = () => {
+          if (game.mana < cost || game.stamina < floorStaminaCost) {
+            showToast('Need more resources', 'This floor costs ' + formatNum(cost) + ' mana and ' + formatNum(Math.floor(floorStaminaCost)) + ' stamina.');
+            return;
+          }
+          game.mana -= cost;
+          game.stamina -= floorStaminaCost;
+          const r = game.specialRooms[roomName];
+          if (r && r.built) r.level = (r.level || 1) + 1;
+          game.stairs++;
+          game.nextFloorCursed = false;
+          game.nextFloorBonus = false;
+          game.scryLockedRoom = null;
+          roomModal.style.display = 'none';
+          renderAll();
+        };
+        roomChoices.appendChild(card);
+      };
+      if (duplicateRoomChoice) addDuplicateCard(duplicateRoomChoice);
+      // Scry: if player locked a room, offer it first
+      if (game.scryLockedRoom && ROOMS[game.scryLockedRoom] && !(sr[game.scryLockedRoom] && sr[game.scryLockedRoom].built)) {
+        addCard(game.scryLockedRoom, ROOMS[game.scryLockedRoom]);
+      }
+      // One random room from the "new" list — exclude already-offered (Scry, Arcanum, Hall, Chronurgy, Leyline when offered explicitly)
+      const offered = new Set();
+      if (game.scryLockedRoom) offered.add(game.scryLockedRoom);
+      const availableRandom = RANDOM_FLOOR_ROOMS.filter(name => !(sr[name] && sr[name].built) && !offered.has(name)
+        && !(totalFloors() >= 20 && name === 'Arcanum')
+        && !(totalFloors() >= 30 && name === 'Hall of Preservation')
+        && !(totalFloors() >= 40 && name === 'Chronurgy Chamber')
+        && !(totalFloors() >= 50 && name === 'Leyline Nexus'));
+      if (availableRandom.length > 0) {
+        const randomName = availableRandom[Math.floor(Math.random() * availableRandom.length)];
+        addCard(randomName, ROOMS[randomName]);
+      }
+      ORIGINAL_SPECIAL.forEach(name => {
+        if (sr[name] && sr[name].built) return;
+        addCard(name, ROOMS[name]);
+      });
+      if (totalFloors() >= 20 && (!sr['Arcanum'] || !sr['Arcanum'].built)) addCard('Arcanum', ROOMS['Arcanum']);
+      if (totalFloors() >= 30 && (!sr['Hall of Preservation'] || !sr['Hall of Preservation'].built)) addCard('Hall of Preservation', ROOMS['Hall of Preservation']);
+      if (totalFloors() >= 40 && (!sr['Chronurgy Chamber'] || !sr['Chronurgy Chamber'].built)) addCard('Chronurgy Chamber', ROOMS['Chronurgy Chamber']);
+      if (totalFloors() >= 50 && (!sr['Leyline Nexus'] || !sr['Leyline Nexus'].built)) addCard('Leyline Nexus', ROOMS['Leyline Nexus']);
+    }
+
+    let currentRoomDetailName = null;
+    function openRoomDetail(roomName) {
+      const info = ROOMS[roomName];
+      const r = (game.specialRooms || {})[roomName];
+      if (!info || !r || !r.built) return;
+      currentRoomDetailName = roomName;
+      roomDetailTitle.textContent = roomName;
+      roomDetailDesc.textContent = info.desc || '';
+      const lvl = r.level || 1;
+      roomDetailLevel.textContent = lvl;
+      const refreshUpgradeBtn = () => {
+        const cost = upgradeCost(roomName);
+        roomDetailUpgradeBtn.innerHTML = 'Upgrade<span class="cost">Cost: ' + formatNum(cost) + ' mana (Shift: x10, Ctrl: max)</span>';
+        roomDetailUpgradeBtn.disabled = (game.mana || 0) < cost;
+      };
+      refreshUpgradeBtn();
+      roomDetailUpgradeBtn.onclick = (e) => {
+        const isMax = e && (e.ctrlKey || e.metaKey);
+        const want = isMax ? 100000 : (e && e.shiftKey) ? 10 : 1;
+        let done = 0;
+        for (let i = 0; i < want; i++) {
+          const c = upgradeCost(roomName);
+          if ((game.mana || 0) < c) break;
+          game.mana -= c;
+          r.level = (r.level || 1) + 1;
+          done++;
+        }
+        if (done > 0) {
+          playSound('click');
+          roomDetailLevel.textContent = r.level;
+          renderAll();
+        }
+        refreshUpgradeBtn();
+      };
+      roomDetailModal.style.display = 'flex';
+    }
+    function closeRoomDetail() {
+      roomDetailModal.style.display = 'none';
+      currentRoomDetailName = null;
+    }
+    roomDetailClose.onclick = closeRoomDetail;
+    roomDetailModal.addEventListener('click', (e) => { if (e.target === roomDetailModal) closeRoomDetail(); });
+    roomDetailModal.querySelector('.modal-content').addEventListener('click', (e) => e.stopPropagation());
+
+    // -------------------- BUTTONS --------------------
+    manaFontBtn.onclick = (e) => {
+      const maxN = maxAffordableManaFonts();
+      const wantN = (e && (e.ctrlKey || e.metaKey)) ? maxN : (e && e.shiftKey) ? Math.min(10, maxN) : Math.min(1, maxN);
+      if (wantN <= 0) return;
+      const bought = buyManaFonts(wantN);
+      if (bought > 0) {
+        playSound('click');
+        renderAll();
+      }
+    };
+    towerBtn.onclick = openRoomSelect;
+
+    function closeSettings() { settingsModal.style.display = 'none'; }
+    settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) closeSettings(); });
+    settingsModal.querySelector('.modal-content').addEventListener('click', (e) => e.stopPropagation());
+
+    function setSettingsTab(tab) {
+      const onKeys = tab === 'keys';
+      if (settingsTabPrefs) {
+        settingsTabPrefs.classList.toggle('active', !onKeys);
+        settingsTabPrefs.setAttribute('aria-selected', String(!onKeys));
+      }
+      if (settingsTabKeys) {
+        settingsTabKeys.classList.toggle('active', onKeys);
+        settingsTabKeys.setAttribute('aria-selected', String(onKeys));
+      }
+      if (settingsPagePrefs) settingsPagePrefs.classList.toggle('hidden', onKeys);
+      if (settingsPageKeys) settingsPageKeys.classList.toggle('hidden', !onKeys);
+    }
+
+    function openPanel(id) {
+      document.querySelectorAll('.panel-modal').forEach(m => m.classList.remove('show'));
+      document.querySelectorAll('#bottomNav .tab').forEach(t => t.classList.remove('active'));
+      const modal = document.getElementById(id);
+      const tab = document.querySelector('#bottomNav .tab[data-panel="' + id + '"]');
+      if (modal) modal.classList.add('show');
+      if (tab) tab.classList.add('active');
+    }
+    function closePanel(id) {
+      const modal = document.getElementById(id);
+      const tab = document.querySelector('#bottomNav .tab[data-panel="' + id + '"]');
+      if (modal) modal.classList.remove('show');
+      if (tab) tab.classList.remove('active');
+    }
+    document.querySelectorAll('#bottomNav .tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        if (tab.classList.contains('tab-locked')) {
+          showToast('Ascension', 'Unlocks at ' + ASCENSION_TAB_UNLOCK + ' floors.');
+          return;
+        }
+        const panelId = tab.getAttribute('data-panel');
+        const modal = document.getElementById(panelId);
+        if (modal && modal.classList.contains('show')) closePanel(panelId);
+        else openPanel(panelId);
+      });
+    });
+
+    function closeAllOverlays() {
+      document.querySelectorAll('.panel-modal').forEach(m => m.classList.remove('show'));
+      document.querySelectorAll('#bottomNav .tab').forEach(t => t.classList.remove('active'));
+      if (roomModal) roomModal.style.display = 'none';
+      if (settingsModal) settingsModal.style.display = 'none';
+      if (statsModal) statsModal.style.display = 'none';
+      if (introModal) introModal.style.display = 'none';
+      if (roomDetailModal) roomDetailModal.style.display = 'none';
+    }
+    function togglePanelById(id) {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      if (modal.classList.contains('show')) closePanel(id);
+      else openPanel(id);
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      const tag = (e.target && e.target.tagName) ? String(e.target.tagName).toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea') return;
+      if (e.key === 'Escape') { closeAllOverlays(); return; }
+      const k = String(e.key || '').toLowerCase();
+      if (k === '1') togglePanelById('activitiesModal');
+      else if (k === '2') togglePanelById('grimoireModal');
+      else if (k === '3') togglePanelById('towerModal');
+      else if (k === '4') {
+        if (ascensionTab && ascensionTab.classList.contains('tab-locked')) {
+          showToast('Ascension', 'Unlocks at ' + ASCENSION_TAB_UNLOCK + ' floors.');
+          return;
+        }
+        togglePanelById('ascensionModal');
+      }
+      else if (k === 's') { if (settingsModal) settingsModal.style.display = settingsModal.style.display === 'flex' ? 'none' : 'flex'; }
+      else if (k === '?' || (k === '/' && e.shiftKey)) { if (introModal) introModal.style.display = 'flex'; }
+      else if (k === 'm') { manaFontBtn && manaFontBtn.click(); }
+    });
+    document.querySelectorAll('.panel-modal').forEach(modal => {
+      modal.addEventListener('click', (e) => { if (e.target === modal) closePanel(modal.id); });
+    });
+    document.querySelectorAll('.panel-content').forEach(content => {
+      content.addEventListener('click', (e) => e.stopPropagation());
+    });
+
+    soundCheckbox.checked = game.soundEnabled;
+    soundCheckbox.onchange = () => { game.soundEnabled = soundCheckbox.checked; };
+
+    if (tutorialCheckbox) {
+      tutorialCheckbox.checked = !!game.settings.showTutorial;
+      tutorialCheckbox.onchange = () => {
+        game.settings.showTutorial = tutorialCheckbox.checked;
+        renderGoalHint();
+      };
+    }
+    if (tutorialResetBtn) {
+      tutorialResetBtn.onclick = () => {
+        game.tutorial = { clicked: false, done: false, completedToast: false };
+        renderGoalHint();
+      };
+    }
+    if (settingsTabPrefs) settingsTabPrefs.onclick = () => setSettingsTab('prefs');
+    if (settingsTabKeys) settingsTabKeys.onclick = () => setSettingsTab('keys');
+    if (settingsBtn) {
+      settingsBtn.onclick = () => {
+        settingsModal.style.display = 'flex';
+        setSettingsTab('prefs');
+      };
+    }
+
+    document.getElementById('statsBtn').onclick = () => {
+      statsModal.style.display = 'flex';
+      const played = (game.stats.timePlayedMs || 0) / 1000;
+      const mins = Math.floor(played / 60);
+      const hours = Math.floor(mins / 60);
+      const timeStr = hours ? hours + 'h ' + (mins % 60) + 'm' : mins + 'm';
+      const maxFloors = game.stats.maxFloorsReached || 0;
+      const maxMps = game.stats.maxManaPerSecReached || 0;
+      const goalReached = game.stats.goalManaReached ? ' (Goal reached!)' : '';
+      statsGrid.innerHTML =
+        '<span>Total mana earned</span><span class="value">' + formatNum(game.stats.totalManaEarned || 0) + '</span>' +
+        '<span>Total spells cast</span><span class="value">' + (game.stats.totalSpellsCast || 0) + '</span>' +
+        '<span>Time played</span><span class="value">' + timeStr + '</span>' +
+        '<span>High score: max floors</span><span class="value">' + maxFloors + '</span>' +
+        '<span>High score: max mana/sec</span><span class="value">' + formatRate(maxMps) + '/s' + goalReached + '</span>' +
+        '<span>Goal: ' + formatNum(GOAL_MANA_PER_SEC) + ' mana/sec</span><span class="value">' + (game.stats.goalManaReached ? 'Done' : '—') + '</span>' +
+        '<span>Prestiges</span><span class="value">' + (game.prestige + game.softPrestige) + '</span>' +
+        '<span>Ascensions</span><span class="value">' + game.ascension + '</span>';
+      achievementsList.innerHTML = '';
+      ACHIEVEMENTS.forEach(a => {
+        const got = (game.stats.achievements || []).includes(a.id);
+        const line = document.createElement('div');
+        line.style.marginBottom = '6px';
+        line.innerHTML = (got ? '&#10003; ' : '&#9726; ') + '<strong>' + a.name + '</strong>: ' + a.desc + (a.reward ? ' (' + a.reward + ')' : '');
+        line.style.opacity = got ? '1' : '0.6';
+        achievementsList.appendChild(line);
+      });
+    };
+    function closeStats() { statsModal.style.display = 'none'; }
+
+    document.getElementById('exportBtn').onclick = () => {
+      const json = JSON.stringify(game);
+      navigator.clipboard.writeText(json).then(() => showToast('Export', 'Save copied to clipboard.')).catch(() => showToast('Export', 'Copy failed.'));
+    };
+    document.getElementById('importBtn').onclick = () => {
+      const raw = prompt('Paste your save data:');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        Object.assign(game, data);
+        if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
+        if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0 };
+        if (typeof game.active.boostTD !== 'number') game.active.boostTD = 1;
+        if (typeof game.active.boostHarvest !== 'number') game.active.boostHarvest = 1;
+        if (typeof game.studyCount !== 'number') game.studyCount = 0;
+        if (typeof game.stamina !== 'number') game.stamina = 0;
+        if (typeof game.focus !== 'number') game.focus = 0;
+        capMana();
+        capStamina();
+        capFocus();
+        renderAll();
+        showToast('Import', 'Save loaded.');
+      } catch (e) {
+        showToast('Import failed', String(e.message));
+      }
+    };
+
+    function addTestMana() {
+      game.mana = Math.min(game.mana + 100000, maxMana());
+      renderAll();
+    }
+
+    function resetGame() {
+      if (!confirm('Reset all progress? This cannot be undone.')) return;
+      window._resettingSave = true;
+      try {
+        localStorage.removeItem('mageTowerSave');
+        localStorage.removeItem('mageTowerIntroSeen');
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.toLowerCase().includes('magetower')) localStorage.removeItem(k);
+        }
+      } catch (e) {}
+      location.reload();
+    }
+
+    // -------------------- SAVE / LOAD / OFFLINE --------------------
+    function saveGame() {
+      if (window._resettingSave) return;
+      showSaveIndicator(true);
+      game.lastSave = Date.now();
+      localStorage.setItem('mageTowerSave', JSON.stringify(game));
+      // Brief delay to show save animation
+      setTimeout(() => showSaveIndicator(false), 300);
+    }
+
+    function loadGame() {
+      try {
+      const s = localStorage.getItem('mageTowerSave');
+      if (!s) return;
+      const data = JSON.parse(s);
+      Object.assign(game, data);
+      if (!game.specialRooms) game.specialRooms = initialSpecialRooms();
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        if (!game.specialRooms[name]) game.specialRooms[name] = { built: false, level: 0 };
+      });
+      if (typeof game.stairs !== 'number') game.stairs = 0;
+      if (Array.isArray(game.rooms) && game.rooms.length > 0) {
+        const count = (name) => game.rooms.filter(r => r === name).length;
+        if (count('Vault') >= 1) { game.specialRooms.Vault = { built: true, level: Math.max(1, count('Vault')) }; }
+        if (count('Library') >= 1) { game.specialRooms.Library = { built: true, level: Math.max(1, count('Library')) }; }
+        if (count('Observatory') >= 1) { game.specialRooms.Observatory = { built: true, level: Math.max(1, count('Observatory')) }; }
+        game.stairs = game.rooms.filter(r => r === 'Stairs').length;
+        delete game.rooms;
+        delete game.floors;
+      }
+      if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
+      if (!game.passive) game.passive = { arcane: 0, astral: 0 };
+      if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0 };
+      if (typeof game.active.boostTD !== 'number') game.active.boostTD = 1;
+      if (typeof game.active.boostHarvest !== 'number') game.active.boostHarvest = 1;
+      if (typeof game.active.harvestTimer !== 'number') game.active.harvestTimer = 0;
+      if (typeof game.active.harvestDuration !== 'number') game.active.harvestDuration = 0;
+      if (typeof game.softPrestige !== 'number') game.softPrestige = 0;
+      if (typeof game.ascension !== 'number') game.ascension = 0;
+      if (typeof game.studyCount !== 'number') game.studyCount = 0;
+      if (typeof game.stamina !== 'number') game.stamina = 0;
+      if (typeof game.focus !== 'number') game.focus = 0;
+      if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true };
+      if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
+      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+      if (typeof game.tutorial.clicked !== 'boolean') game.tutorial.clicked = false;
+      if (typeof game.tutorial.done !== 'boolean') game.tutorial.done = false;
+      if (typeof game.tutorial.completedToast !== 'boolean') game.tutorial.completedToast = false;
+      if (!Array.isArray(game.memorizedSpells)) game.memorizedSpells = [];
+      if (typeof game.spellSwapCooldownEnd !== 'number') game.spellSwapCooldownEnd = 0;
+      if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0 };
+      if (game.prestigeTokenChoice !== 'font' && game.prestigeTokenChoice !== 'study') game.prestigeTokenChoice = null;
+      capMana();
+      capStamina();
+      capFocus();
+
+      const now = Date.now();
+      const last = game.lastSave || now;
+      const dtMs = Math.min(now - last, OFFLINE_CAP_HOURS * 3600 * 1000);
+      if (dtMs > 60000) {
+        const dtSec = dtMs / 1000;
+        const gained = manaPerSecond() * dtSec * 0.5;
+        game.mana = Math.min(game.mana + gained, maxMana());
+        game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gained;
+        const staminaGain = staminaPerSecond() * dtSec * 0.25;
+        game.stamina = Math.min(game.stamina + staminaGain, maxStamina());
+        const focusWarmupSec = FOCUS_IDLE_SEC / FOCUS_OFFLINE_DIVISOR;
+        const focusRegenSec = Math.max(0, dtSec - focusWarmupSec);
+        const focusGain = focusRegenSec * FOCUS_REGEN_BASE * OFFLINE_FOCUS_RATE;
+        game.focus = Math.min((game.focus || 0) + focusGain, maxFocus());
+        const cooldownTick = dtMs * 0.5;
+        if (game.spellSwapCooldownEnd > 0) game.spellSwapCooldownEnd = Math.max(now, (game.spellSwapCooldownEnd || now) - cooldownTick);
+        if (game.ritualOfBindingCooldownEnd > 0) game.ritualOfBindingCooldownEnd = Math.max(now, (game.ritualOfBindingCooldownEnd || now) - cooldownTick);
+        if (game.ritualActivityCooldownEnd > 0) game.ritualActivityCooldownEnd = Math.max(now, (game.ritualActivityCooldownEnd || now) - cooldownTick);
+        // POLISH: Show offline modal for significant time away (5+ minutes), toast for shorter
+        if (dtMs >= 5 * 60 * 1000) {
+          showOfflineProgress(gained, staminaGain, focusGain, dtMs);
+        } else {
+          showToast('Offline progress', 'Earned ' + formatNum(gained) + ' mana, ' + formatNum(staminaGain) + ' stamina' + (focusGain > 0 ? ', ' + formatNum(focusGain) + ' focus' : '') + ' while away.');
+        }
+      }
+      } catch (loadErr) {
+        localStorage.removeItem('mageTowerSave');
+      }
+    }
+
+    if (typeof location !== 'undefined' && location.search && location.search.includes('clearSave=1')) {
+      try { localStorage.removeItem('mageTowerSave'); } catch (e) {}
+    }
+    loadGame();
+    renderAll();
+    checkAchievements();
+
+    if (!localStorage.getItem('mageTowerIntroSeen')) {
+      introModal.style.display = 'flex';
+    }
+    introCloseBtn.onclick = () => {
+      try { localStorage.setItem('mageTowerIntroSeen', '1'); } catch (e) {}
+      introModal.style.display = 'none';
+    };
+    introModal.addEventListener('click', (e) => {
+      if (e.target === introModal) {
+        try { localStorage.setItem('mageTowerIntroSeen', '1'); } catch (e2) {}
+        introModal.style.display = 'none';
+      }
+    });
+    introModal.querySelector('.modal-content').addEventListener('click', (e) => e.stopPropagation());
+
+    // -------------------- GAME LOOP --------------------
+    let lastTickTime = Date.now();
+    let towerPulseIndex = 0;
+    setInterval(() => {
+      const now = Date.now();
+      const dt = (now - lastTickTime) / 1000;
+      lastTickTime = now;
+      game.stats.timePlayedMs = (game.stats.timePlayedMs || 0) + Math.round(dt * 1000);
+      const tf = totalFloors();
+      if (tf > (game.stats.maxFloorsReached || 0)) game.stats.maxFloorsReached = tf;
+      const mps = manaPerSecond();
+      if (mps > (game.stats.maxManaPerSecReached || 0)) game.stats.maxManaPerSecReached = mps;
+      if (mps >= GOAL_MANA_PER_SEC && !(game.stats.goalManaReached)) {
+        game.stats.goalManaReached = true;
+        showToast('Goal reached!', 'You reached ' + formatNum(GOAL_MANA_PER_SEC) + ' mana/sec!');
+        playSound('milestone');
+      }
+      if (tf >= PARAGON_FLOOR_MIN && (game.ascension || game.ascensionTier2) >= 1) {
+        game.paragonXp = (game.paragonXp || 0) + PARAGON_XP_PER_TICK;
+      }
+
+      const gained = mps * Math.min(dt, TICK / 1000 * 2);
+      game.mana = Math.min(game.mana + gained, maxMana());
+      game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gained;
+
+      const sps = staminaPerSecond();
+      const staminaGain = sps * Math.min(dt, TICK / 1000 * 2);
+      game.stamina = Math.min(game.stamina + staminaGain, maxStamina());
+
+      if (isRestingForFocus()) {
+        const fps = focusPerSecond();
+        const focusGain = fps * Math.min(dt, TICK / 1000 * 2);
+        game.focus = Math.min((game.focus || 0) + focusGain, maxFocus());
+      }
+      capFocus();
+
+      const hadActiveSpell = game.active.timer > 0 || game.active.harvestTimer > 0 || game.active.leylineTapTimer > 0;
+      if (game.active.timer > 0) {
+        game.active.timer -= dt;
+        if (game.active.timer <= 0) {
+          game.active.boostTD = 1;
+          game.active.duration = 0;
+        }
+      }
+      if (game.active.harvestTimer > 0) {
+        game.active.harvestTimer -= dt;
+        if (game.active.harvestTimer <= 0) game.active.boostHarvest = 1;
+      }
+      if (game.active.leylineTapTimer > 0) {
+        game.active.leylineTapTimer -= dt;
+        if (game.active.leylineTapTimer <= 0) game.active.leylineTapPct = 0;
+      }
+      if (hadActiveSpell && game.active.timer <= 0 && game.active.harvestTimer <= 0 && game.active.leylineTapTimer <= 0) renderSpells();
+
+      const hadCooldown = game.active.cooldown > 0;
+      if (game.active.cooldown > 0) {
+        game.active.cooldown -= dt;
+        if (game.active.cooldown < 0) game.active.cooldown = 0;
+      }
+      if (hadCooldown && game.active.cooldown <= 0) renderSpells();
+
+      renderUI();
+      checkAchievements();
+
+      towerPulseIndex++;
+      if (towerContainer.children.length && towerPulseIndex % 50 === 0) {
+        const block = towerContainer.children[towerContainer.children.length - 1];
+        if (block && block.classList) {
+          block.classList.add('tick-pulse');
+          setTimeout(() => block.classList.remove('tick-pulse'), 300);
+        }
+      }
+
+      saveGame();
+    }, TICK);
+  </script>
+</body>
+</html>
