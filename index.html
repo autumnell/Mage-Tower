@@ -66,17 +66,22 @@
     .tower-upgrade {
       background: #1c2232;
       border-color: #2a3446;
+      color: #c7d1e6;
+      transition: color 1.4s ease, text-shadow 1.4s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
     }
     .tower-upgrade.affordable {
       background: #2f62d6;
       border-color: #6a8fff;
-      color: #f3f7ff;
+      color: #f7f9ff;
+      text-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
       box-shadow: 0 0 16px rgba(106, 143, 255, 0.35);
     }
     .tower-upgrade.affordable:hover:not(:disabled) {
       background: #3b6ff0;
       border-color: #7ea0ff;
     }
+    .tower-upgrade .cost { color: rgba(199, 209, 230, 0.78); }
+    .tower-upgrade.affordable .cost { color: rgba(244, 248, 255, 0.92); }
 
     .tooltip {
       visibility: hidden;
@@ -531,15 +536,17 @@
       align-items: center;
       justify-content: center;
       position: relative;
-      gap: 12px;
+      gap: 16px;
       min-width: 240px;
     }
     #topActions {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
+      min-width: 160px;
       gap: 12px;
     }
-    #topBar .resources { display: flex; align-items: flex-start; gap: 28px; font-size: 1.05em; flex-wrap: wrap; }
+    #topBar .resources { display: flex; align-items: center; justify-content: center; gap: 28px; font-size: 1.05em; flex-wrap: wrap; }
     #topBar .resource-block {
       display: flex;
       flex-direction: column;
@@ -618,10 +625,10 @@
     #bottomNav {
       display: flex;
       justify-content: center;
-      gap: 0;
+      gap: 6px;
       background: var(--bg-panel);
       border-top: 1px solid var(--border);
-      padding: 0;
+      padding: 8px 12px 10px;
       box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
     }
     #bottomNav .tab {
@@ -629,6 +636,7 @@
       max-width: 200px;
       padding: 14px 18px;
       border: none;
+      border-radius: 12px;
       background: transparent;
       color: var(--text-muted);
       font-size: 0.95em;
