@@ -63,6 +63,21 @@
     button:active:not(:disabled) { transform: scale(0.99); }
     button:disabled { background: #1a1520; border-color: transparent; opacity: 0.6; cursor: not-allowed; }
 
+    .tower-upgrade {
+      background: #1c2232;
+      border-color: #2a3446;
+    }
+    .tower-upgrade.affordable {
+      background: #2f62d6;
+      border-color: #6a8fff;
+      color: #f3f7ff;
+      box-shadow: 0 0 16px rgba(106, 143, 255, 0.35);
+    }
+    .tower-upgrade.affordable:hover:not(:disabled) {
+      background: #3b6ff0;
+      border-color: #7ea0ff;
+    }
+
     .tooltip {
       visibility: hidden;
       opacity: 0;
@@ -96,15 +111,15 @@
     }
     .tutorial-tip {
       position: fixed;
-      max-width: 240px;
-      background: var(--bg-card);
+      max-width: 280px;
+      background: linear-gradient(180deg, rgba(24, 28, 40, 0.98), rgba(20, 24, 34, 0.98));
       color: var(--text);
-      border: 1px solid var(--accent);
-      border-radius: var(--radius-sm);
-      padding: 10px 12px;
-      font-size: 0.86em;
+      border: 1px solid rgba(124, 156, 244, 0.6);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 0.9em;
       line-height: 1.4;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), 0 0 18px rgba(124, 156, 244, 0.18);
     }
     .tutorial-tip strong { color: var(--accent); }
     .tutorial-tip::before,
@@ -220,6 +235,11 @@
       border: 1px solid rgba(255, 255, 255, 0.10);
       box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
       overflow: hidden;
+    }
+    #towerContainer,
+    .tower-block,
+    .tower-block .room {
+      user-select: none;
     }
     .tower-block.foundation {
       background: linear-gradient(180deg, #2a3040 0%, #161b26 100%);
@@ -714,6 +734,10 @@
       align-items: center;
       justify-content: center;
       padding: 0;
+      position: fixed;
+      left: 14px;
+      bottom: 72px;
+      z-index: 20;
     }
     #settingsBtn:hover { background: var(--border-focus); border-color: var(--border-focus); }
 
@@ -976,7 +1000,6 @@
         <span id="timeDilationBoost" class="sub">Boost: x1.00</span>
         <div class="progress" style="width:80px;margin:0;"><div id="timeDilationFill" class="fill"></div></div>
       </div>
-      <button id="settingsBtn" aria-label="Settings" type="button">&#9881;</button>
     </div>
   </header>
 
@@ -1011,6 +1034,8 @@
       <span class="tab-badge" aria-hidden="true"></span>
     </button>
   </nav>
+
+  <button id="settingsBtn" aria-label="Settings" type="button">&#9881;</button>
 
   <div id="activitiesModal" class="panel-modal">
     <div class="panel-content">
@@ -1049,8 +1074,8 @@
       <div id="towerUpgradeButtons"></div>
       <div class="section-divider"></div>
       <p class="section-title">Tower Upgrades</p>
-      <button id="manaFontBtn">Mana Font<span class="cost" id="manaFontCost"></span><span class="upgrade-preview" id="manaFontPreview"></span></button>
-      <button id="towerBtn">Raise Tower Floor<span class="cost" id="towerCost"></span><span class="upgrade-preview" id="towerPreview"></span></button>
+      <button id="manaFontBtn" class="tower-upgrade">Mana Font<span class="cost" id="manaFontCost"></span><span class="upgrade-preview" id="manaFontPreview"></span></button>
+      <button id="towerBtn" class="tower-upgrade">Raise Tower Floor<span class="cost" id="towerCost"></span><span class="upgrade-preview" id="towerPreview"></span></button>
       <div class="section-divider"></div>
       <div id="prestigeSection" style="display:none">
         <p class="section-title">Prestige</p>
@@ -1254,8 +1279,8 @@
 
   <div id="tutorialLayer" aria-hidden="true"></div>
   <div id="loreTip" class="tutorial-tip pos-bottom">
-    <strong>Why you're here</strong><br>
-    You are a mage who has claimed a leyline nexus. To channel its power and grow in influence, you must raise a tower—room by room—so your connection to the mana flow deepens.
+    <strong>Welcome, mage</strong><br>
+    You have claimed a leyline nexus. Raise a tower—room by room—to deepen your bond with the mana flow and grow your influence.
     <button type="button" id="loreCloseBtn" class="lore-close">Got it</button>
   </div>
   <div id="toastContainer"></div>
@@ -1322,7 +1347,7 @@
     const TOWER_STRAIN_PCT_PER_10 = 0.10;
     const EXHAUSTED_DURATION_MS = 2 * 60 * 1000;
     const FLOOR_STAMINA_COST_PCT = 0.08;
-    const BASE_FOCUS_MAX = 100;
+    const BASE_FOCUS_MAX = 50;
     const FOCUS_REGEN_BASE = 0.1;
     const FOCUS_IDLE_SEC = 60;
     const FOCUS_OFFLINE_DIVISOR = 8;
@@ -2181,6 +2206,14 @@
       for (let i = 0; i < casts; i++) cost = (cost + 1) * growthFactor;
       return cost;
     }
+    function scaledSpellManaCost(baseCost) {
+      const poolScale = maxMana() * 0.02;
+      return Math.max(0, baseCost + poolScale);
+    }
+    function studyFocusCost() {
+      const base = 1 * Math.pow(1.05, game.studyCount || 0);
+      return Math.max(1, base);
+    }
 
     function manaPerSecond() {
       const floors = totalFloors();
@@ -2353,7 +2386,8 @@
     // -------------------- SPELL COST (Spell Echo + Attune) --------------------
     function trySpendManaForSpell(baseCost) {
       const discount = (game.attuneDiscount || 0) + currentSpellCostDiscount();
-      const actualCost = Math.max(0, baseCost * (1 - Math.min(0.9, discount)));
+      const scaledCost = baseCost > 0 ? scaledSpellManaCost(baseCost) : 0;
+      const actualCost = Math.max(0, scaledCost * (1 - Math.min(0.9, discount)));
       const echoLvl = game.passive.spellEcho || 0;
       const now = Date.now();
       if (echoLvl > 0 && (game.spellEchoNextFreeAt || 0) <= now) {
@@ -2376,7 +2410,7 @@
         id: 'transmutate',
         name: 'Transmutate',
         unlock: 0,
-        desc: 'Convert current mana into stamina at a 3:1 rate.',
+        desc: 'Convert mana into stamina.',
         cooldownMs: 6000,
         cooldownKey: 'transmutateCooldownEnd',
         effect: () => {
@@ -2430,7 +2464,7 @@
           game.active.cooldown = game.active.duration * 1.1;
           playSound('spell');
         },
-        costText: () => 'Cost ' + formatNum(timeDilationCost(game.stats.timeDilationCasts || 0)) + ' mana, 15 focus',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(timeDilationCost(game.stats.timeDilationCasts || 0))) + ' mana, 15 focus',
       },
       {
         id: 'manaSiphon',
@@ -2455,7 +2489,7 @@
           game.manaSiphonCooldownEnd = now + 8000;
           playSound('spell');
         },
-        costText: () => 'Cost 120 mana, 10 focus · Cooldown 8s',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(120)) + ' mana, 10 focus · Cooldown 8s',
       },
       {
         id: 'runeAccretion',
@@ -2477,7 +2511,7 @@
           game.runeAccretionCooldownEnd = now + 20000;
           playSound('spell');
         },
-        costText: () => 'Cost 400 mana · Cooldown 20s',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(400)) + ' mana · Cooldown 20s',
       },
       {
         id: 'arcaneHarvest',
@@ -2501,7 +2535,7 @@
           game.active.harvestDuration = 5 * mult * durMult;
           playSound('spell');
         },
-        costText: () => 'Cost ' + formatNum(200 * Math.pow(1.4, game.stats.arcaneHarvestCasts || 0)) + ' mana, 20 focus',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(200 * Math.pow(1.4, game.stats.arcaneHarvestCasts || 0))) + ' mana, 20 focus',
       },
       {
         id: 'focusSurge',
@@ -2520,7 +2554,7 @@
           game.focus = Math.min((game.focus || 0) + gain, maxFocus());
           playSound('spell');
         },
-        costText: () => 'Cost ' + formatNum(250 * Math.pow(1.35, game.stats.focusSurgeCasts || 0)) + ' mana',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(250 * Math.pow(1.35, game.stats.focusSurgeCasts || 0))) + ' mana',
       },
       {
         id: 'staminaTransmute',
@@ -2570,7 +2604,7 @@
           game.active.leylineTapTimer = LEYLINE_TAP_DURATION * mult * durMult;
           playSound('spell');
         },
-        costText: () => 'Cost ' + formatNum(400 * Math.pow(1.5, game.stats.leylineSurgeCasts || 0)) + ' mana, 25 focus',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(400 * Math.pow(1.5, game.stats.leylineSurgeCasts || 0))) + ' mana, 25 focus',
       },
       {
         id: 'focusCondenser',
@@ -2591,7 +2625,7 @@
           game.focusCondenserCooldownEnd = now + 20000;
           playSound('spell');
         },
-        costText: () => 'Cost 600 mana · Cooldown 20s',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(600)) + ' mana · Cooldown 20s',
       },
       {
         id: 'leylineResonance',
@@ -2615,7 +2649,7 @@
           game.leylineResonanceCooldownEnd = now + 45000;
           playSound('spell');
         },
-        costText: () => 'Cost 1500 mana, 25 focus · Cooldown 45s',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(1500)) + ' mana, 25 focus · Cooldown 45s',
       },
       {
         id: 'wardOfPreservation',
@@ -2631,7 +2665,7 @@
           playSound('spell');
           showToast('Ward of Preservation', 'Next reset will keep 5% of current mana.');
         },
-        costText: () => 'Cost ' + formatNum(2000) + ' mana (one use per run)',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(2000)) + ' mana (one use per run)',
       },
       {
         id: 'ritualOfBinding',
@@ -2651,7 +2685,7 @@
           playSound('spell');
           showToast('Ritual of Binding', 'Next Memorize/Forget will have 50% shorter cooldown.');
         },
-        costText: () => 'Cost ' + formatNum(800) + ' mana, 30 focus',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(800)) + ' mana, 30 focus',
       },
       {
         id: 'towerPulse',
@@ -2672,7 +2706,7 @@
           playSound('spell');
           showToast('Tower Pulse', 'Next floor costs 25% less.');
         },
-        costText: () => 'Cost 3000 mana · Cooldown 30s',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(3000)) + ' mana · Cooldown 30s',
       },
       {
         id: 'vigorInfusion',
@@ -2695,7 +2729,7 @@
           game.focus = Math.min((game.focus || 0) + focusGain, maxFocus());
           playSound('spell');
         },
-        costText: () => 'Cost ' + formatNum(1200 * Math.pow(1.45, game.stats.vigorInfusionCasts || 0)) + ' mana, 20 focus',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(1200 * Math.pow(1.45, game.stats.vigorInfusionCasts || 0))) + ' mana, 20 focus',
       },
       {
         id: 'chronoLoop',
@@ -2725,7 +2759,7 @@
           game.chronoLoopCooldownEnd = now + 60 * 60 * 1000;
           playSound('milestone');
         },
-        costText: () => 'Cost 5000 mana, 35 focus · Cooldown 1h',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(5000)) + ' mana, 35 focus · Cooldown 1h',
       },
       {
         id: 'nexusOverclock',
@@ -2751,7 +2785,7 @@
           game.nexusOverclockCooldownEnd = now + 30 * 60 * 1000;
           playSound('milestone');
         },
-        costText: () => 'Cost 8000 mana, 40 focus · Cooldown 30m',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(8000)) + ' mana, 40 focus · Cooldown 30m',
       },
       {
         id: 'worldweave',
@@ -2775,7 +2809,7 @@
           game.worldweaveCooldownEnd = now + 2 * 60 * 60 * 1000;
           playSound('milestone');
         },
-        costText: () => 'Cost 10000 mana, 50 focus · Cooldown 2h',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(10000)) + ' mana, 50 focus · Cooldown 2h',
       },
       {
         id: 'leylineConvergence',
@@ -2800,7 +2834,7 @@
           game.convergenceCooldownEnd = now + 45 * 60 * 1000;
           playSound('milestone');
         },
-        costText: () => 'Cost 6000 mana, 35 focus · Cooldown 45m',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(6000)) + ' mana, 35 focus · Cooldown 45m',
       },
       {
         id: 'paradoxCast',
@@ -2839,7 +2873,7 @@
           game.paradoxCastCooldownEnd = now + 2 * 60 * 60 * 1000;
           playSound('milestone');
         },
-        costText: () => 'Cost 4000 mana, 30 focus · Cooldown 2h',
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(4000)) + ' mana, 30 focus · Cooldown 2h',
       },
     ];
 
@@ -2941,9 +2975,10 @@
         name: 'Study',
         desc: 'Increases max mana pool by 7%.',
         costStaminaPct: 0.33,
-        focusCost: 10,
+        focusCost: () => studyFocusCost(),
         effect: () => {
-          if (!trySpendFocus(10)) return;
+          const focusCost = studyFocusCost();
+          if (!trySpendFocus(focusCost)) return;
           const cost = maxStamina() * 0.33;
           if (game.stamina < cost) return;
           game.stamina -= cost;
@@ -2953,7 +2988,7 @@
           capMana();
           playSound('spell');
         },
-        costText: () => 'Cost 33% max stamina, 10 focus',
+        costText: () => 'Cost 33% max stamina, ' + formatNum(studyFocusCost()) + ' focus',
       },
       {
         id: 'channel',
@@ -3308,7 +3343,7 @@
 
       clearTutorialLayer();
       if (!task1) {
-        addTutorialTip(towerContainer, '<strong>Start here</strong><br>Click the tower to collect mana.', 'right');
+        addTutorialTip(towerContainer, '<strong>Gather mana</strong><br>Click around the tower to gain mana.', 'bottom');
         return;
       }
       if (!task2) {
@@ -3326,7 +3361,7 @@
       }
       if (!task3) {
         const floorCost = effectiveFloorCost();
-        const floorStamCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
+        const floorStamCost = effectiveFloorStaminaCost();
         const canBuild = (game.mana || 0) >= floorCost && (game.stamina || 0) >= floorStamCost;
         if (!canBuild) {
           const needStam = (game.stamina || 0) < floorStamCost;
@@ -3346,7 +3381,7 @@
           const unlockFloors = Number(a.unlockFloors) || 0;
           if (totalFloors() < unlockFloors) return false;
           const stamCost = (a.costStaminaPct || 0) * maxStamina();
-          const focusCost = a.focusCost || 0;
+          const focusCost = (typeof a.focusCost === 'function') ? a.focusCost() : (a.focusCost || 0);
           if ((game.stamina || 0) < stamCost) return false;
           if ((game.focus || 0) < focusCost) return false;
           const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
@@ -3417,7 +3452,7 @@
           if (totalFloors() < a.unlockFloors) continue;
           const ritualMult = a.id === 'ritual' ? ritualCostMultiplier() : 1;
           const stamCost = (a.costStaminaPct || 0) * maxStamina() * ritualMult;
-          const focusCost = a.focusCost || 0;
+          const focusCost = (typeof a.focusCost === 'function') ? a.focusCost() : (a.focusCost || 0);
           if ((game.stamina || 0) < stamCost) continue;
           if ((game.focus || 0) < focusCost) continue;
           const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
@@ -3492,6 +3527,8 @@
       }
       floors.textContent = totalFloors();
       manaFontCostEl.textContent = 'Cost: ' + formatNum(manaFontCost()) + ' mana (Shift: x10, Ctrl: max)';
+      const canBuyFont = (game.mana || 0) >= manaFontCost();
+      if (manaFontBtn) manaFontBtn.classList.toggle('affordable', canBuyFont);
       const currentMps = manaPerSecond();
       const sigilStacks = Math.min(game.sigilStacks || 0, SIGIL_STACK_CAP);
       const sigilMult = 1 + sigilStacks * SIGIL_STACK_PCT;
@@ -3501,6 +3538,8 @@
       if (manaFontPreview) manaFontPreview.textContent = '+' + formatRate(mpsGainFromFont) + '/s (+' + fontGainPct + '%)';
       const effCost = effectiveFloorCost();
       const floorStamCost = effectiveFloorStaminaCost();
+      const canBuild = (game.mana || 0) >= effCost && (game.stamina || 0) >= floorStamCost;
+      if (towerBtn) towerBtn.classList.toggle('affordable', canBuild);
       const discountTag = (game.nextFloorDiscountPct || 0) > 0 ? ' (Tower Pulse: -25%)' : '';
       towerCostEl.textContent = game.nextFloorBonus ? 'Next floor: Free (+ ' + formatNum(floorStamCost) + ' stamina)' : (game.nextFloorCursed ? 'Next floor: ' + formatNum(effCost) + ' mana, ' + formatNum(floorStamCost) + ' stamina (2× cost, 2× effect)' : 'Cost: ' + formatNum(effCost) + ' mana, ' + formatNum(floorStamCost) + ' stamina' + discountTag);
       if (towerPreview) towerPreview.textContent = '+' + (FLOOR_BONUS * 100).toFixed(1) + '% mana/sec';
@@ -3757,9 +3796,10 @@
         btn.appendChild(desc);
         const ritualMult = a.id === 'ritual' ? ritualCostMultiplier() : 1;
         const costAmount = a.costStaminaPct != null ? maxStamina() * a.costStaminaPct * ritualMult : 0;
+        const focusCost = (typeof a.focusCost === 'function') ? a.focusCost() : (a.focusCost || 0);
         const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
         const onCooldown = a.cooldownMs && (game[cooldownKey] || 0) > Date.now();
-        const lowFocus = a.focusCost != null && focus < a.focusCost - EPS;
+        const lowFocus = a.focusCost != null && focus < focusCost - EPS;
         const lowStamina = a.costStaminaPct != null && stamina < costAmount - EPS;
         const customDisabled = typeof a.disabled === 'function' ? a.disabled() : false;
         btn.onclick = () => {
@@ -3826,7 +3866,7 @@
       const floorLockedActive = ACTIVE_SPELLS.filter(s => !isSpellUnlocked(s, true) && !s.unlockCheck && typeof s.unlock === 'number');
       floorLockedActive.sort((a, b) => (a.unlock || 0) - (b.unlock || 0));
       const nextLockedActive = floorLockedActive[0];
-      const activeToShow = ACTIVE_SPELLS.filter(s => isSpellUnlocked(s, true) || s.unlockCheck || s === nextLockedActive);
+      const activeToShow = ACTIVE_SPELLS.filter(s => isSpellUnlocked(s, true) || s === nextLockedActive);
       const activeSort = (s) => {
         if (typeof s.sortKey === 'number') return s.sortKey;
         if (s.unlockCheck && !isSpellUnlocked(s, true)) return 900;
@@ -3905,7 +3945,7 @@
       const floorLockedPassive = PASSIVE_SPELLS.filter(s => !isSpellUnlocked(s, false) && !s.unlockCheck && typeof s.unlock === 'number');
       floorLockedPassive.sort((a, b) => (a.unlock || 0) - (b.unlock || 0));
       const nextLockedPassive = floorLockedPassive[0];
-      const passiveToShow = PASSIVE_SPELLS.filter(s => isSpellUnlocked(s, false) || s.unlockCheck || s === nextLockedPassive);
+      const passiveToShow = PASSIVE_SPELLS.filter(s => isSpellUnlocked(s, false) || s === nextLockedPassive);
       const passiveSort = (s) => {
         if (s.unlockCheck && !isSpellUnlocked(s, false)) return 900;
         return typeof s.unlock === 'number' ? s.unlock : 999;
@@ -4833,13 +4873,9 @@
         renderActivities();
         lastActivitiesRender = now;
       }
-      const cooldownActive = anyActiveSpellCooldown();
-      if (cooldownActive && now - lastSpellRender > 150) {
+      if (now - lastSpellRender > 250) {
         renderSpells();
         lastSpellRender = now;
-      } else if (!cooldownActive && lastSpellRender !== 0) {
-        renderSpells();
-        lastSpellRender = 0;
       }
       checkAchievements();
 
