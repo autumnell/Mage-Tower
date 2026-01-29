@@ -88,6 +88,81 @@
     button .desc { display: block; font-size: 0.82em; opacity: 0.8; margin-top: 4px; font-weight: 500; }
     button .desc .detail { display: block; margin-top: 6px; opacity: 0.9; }
     .unlock-hint { font-size: 0.78em; opacity: 0.75; margin-top: 4px; color: var(--text-muted); }
+    #tutorialLayer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 14;
+    }
+    .tutorial-tip {
+      position: fixed;
+      max-width: 240px;
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 0.86em;
+      line-height: 1.4;
+      box-shadow: var(--shadow);
+    }
+    .tutorial-tip strong { color: var(--accent); }
+    .tutorial-tip::before,
+    .tutorial-tip::after {
+      content: "";
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-style: solid;
+    }
+    .tutorial-tip.pos-top::before {
+      bottom: -10px;
+      left: 24px;
+      border-width: 10px 10px 0 10px;
+      border-color: var(--accent) transparent transparent transparent;
+    }
+    .tutorial-tip.pos-top::after {
+      bottom: -8px;
+      left: 24px;
+      border-width: 8px 8px 0 8px;
+      border-color: var(--bg-card) transparent transparent transparent;
+    }
+    .tutorial-tip.pos-bottom::before {
+      top: -10px;
+      left: 24px;
+      border-width: 0 10px 10px 10px;
+      border-color: transparent transparent var(--accent) transparent;
+    }
+    .tutorial-tip.pos-bottom::after {
+      top: -8px;
+      left: 24px;
+      border-width: 0 8px 8px 8px;
+      border-color: transparent transparent var(--bg-card) transparent;
+    }
+    .tutorial-tip.pos-left::before {
+      right: -10px;
+      top: 18px;
+      border-width: 10px 0 10px 10px;
+      border-color: transparent transparent transparent var(--accent);
+    }
+    .tutorial-tip.pos-left::after {
+      right: -8px;
+      top: 18px;
+      border-width: 8px 0 8px 8px;
+      border-color: transparent transparent transparent var(--bg-card);
+    }
+    .tutorial-tip.pos-right::before {
+      left: -10px;
+      top: 18px;
+      border-width: 10px 10px 10px 0;
+      border-color: transparent var(--accent) transparent transparent;
+    }
+    .tutorial-tip.pos-right::after {
+      left: -8px;
+      top: 18px;
+      border-width: 8px 8px 8px 0;
+      border-color: transparent var(--bg-card) transparent transparent;
+    }
     .stat { margin: 8px 0; font-size: 0.95em; }
     .cost { font-size: 0.88em; opacity: 0.8; display: block; color: var(--text-muted); margin-top: 2px; }
     .section-divider { margin: 20px 0; height: 1px; background: var(--border); }
@@ -130,6 +205,11 @@
       box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
       overflow: hidden;
     }
+    .tower-block.foundation {
+      background: linear-gradient(180deg, #2a3040 0%, #161b26 100%);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+    .tower-block.foundation .room { opacity: 0.9; }
     /* tier tapering (keeps blocky silhouette but feels “designed”) */
     .tower-block.tier-1 { width: 112px; }
     .tower-block.tier-2 { width: 106px; }
@@ -442,27 +522,13 @@
     }
     .mini-progress.stamina > .mini-fill { background: linear-gradient(90deg, var(--stamina), #e9c89a); }
     .mini-progress.focus > .mini-fill { background: linear-gradient(90deg, var(--focus-color), var(--accent)); }
-    #goalBar {
+    #tabBar {
       width: 100%;
-      padding: 10px 24px;
-      background: var(--bg-card);
+      padding: 8px 24px;
+      background: var(--bg-panel);
       border-bottom: 1px solid var(--border);
-      box-shadow: 0 1px 0 rgba(124, 156, 244, 0.06);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
     }
-    .goal-hint {
-      max-width: 100%;
-      margin: 0 auto;
-      padding: 0;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-size: 0.88em;
-      line-height: 1.4;
-      text-align: center;
-    }
-    .goal-hint strong { color: var(--text); font-weight: 700; }
-    .goal-hint .k { color: var(--accent); font-weight: 700; }
-    .goal-hint .muted { color: var(--text-muted); opacity: 0.85; }
     #main {
       flex: 1;
       display: flex;
@@ -492,28 +558,28 @@
     }
     #main::after { opacity: 0.18; animation-duration: 28s; animation-direction: reverse; }
     @keyframes drift { from { transform: translate3d(0,0,0); } to { transform: translate3d(8%, 6%, 0); } }
-    #main #towerContainer { margin-bottom: 80px; }
+    #main #towerContainer { margin-bottom: 40px; }
     #bottomNav {
       display: flex;
       justify-content: center;
-      gap: 0;
-      background: var(--bg-panel);
-      border-top: 1px solid var(--border);
+      gap: 10px;
+      background: transparent;
+      border: none;
       padding: 0;
-      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+      box-shadow: none;
     }
     #bottomNav .tab {
-      flex: 1;
+      flex: 0 1 180px;
       max-width: 200px;
-      padding: 14px 18px;
-      border: none;
+      padding: 10px 14px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
       background: transparent;
       color: var(--text-muted);
       font-size: 0.95em;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
-      border-bottom: 3px solid transparent;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -535,7 +601,7 @@
     #bottomNav .tab.has-badge .tab-badge { display: inline-flex; }
     #bottomNav .tab:hover { color: var(--text); background: var(--accent-dim); }
     #bottomNav .tab:hover .tab-icon { opacity: 1; }
-    #bottomNav .tab.active { color: var(--accent); background: var(--accent-dim); border-bottom-color: var(--accent); }
+    #bottomNav .tab.active { color: var(--accent); background: var(--accent-dim); border-color: var(--accent); }
     #bottomNav .tab.active .tab-icon { opacity: 1; filter: drop-shadow(0 0 8px var(--accent-glow)); }
     #bottomNav .tab.tab-locked { opacity: 0.5; cursor: not-allowed; pointer-events: auto; }
     #bottomNav .tab.tab-locked:hover { color: var(--text-muted); background: transparent; }
@@ -616,7 +682,7 @@
     .settings-content { max-width: 420px; }
     .settings-header {
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+      margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
     }
     .settings-header h2 { margin: 0; font-size: 1.35em; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; }
     .settings-close {
@@ -627,7 +693,7 @@
       transition: background 0.2s, border-color 0.2s;
     }
     .settings-close:hover { background: var(--border-focus); border-color: var(--border-focus); }
-    .settings-section { margin-bottom: 20px; }
+    .settings-section { margin-bottom: 16px; }
     .settings-section:last-child { margin-bottom: 0; }
     .settings-section-title {
       font-size: 0.8em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
@@ -712,8 +778,15 @@
     .settings-btn-danger:hover:not(:disabled) {
       background: rgba(140, 70, 70, 0.2); border-color: #a05050;
     }
-    .settings-section-dev .settings-section-title { color: var(--text-muted); opacity: 0.8; }
-    .settings-btn-dev { opacity: 0.85; font-size: 0.9em; }
+    .glossary-list { display: grid; gap: 10px; }
+    .glossary-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+    .glossary-item .term { font-weight: 700; color: var(--accent); }
+    .glossary-item .desc { color: var(--text-muted); font-size: 0.9em; margin-top: 4px; }
     .game-title {
       margin: 0;
       font-size: 1.15em;
@@ -726,8 +799,7 @@
       .game-title { font-size: 1em; }
       #topBar { padding: 10px 14px; gap: 10px; }
       #topBar .resource-block { padding: 4px 8px; font-size: 0.95em; }
-      #goalBar { padding: 8px 14px; }
-      .goal-hint { font-size: 0.82em; }
+      #tabBar { padding: 6px 14px; }
       .panel-modal .panel-content { padding: 20px; }
     }
 
@@ -858,41 +930,39 @@
     <button id="settingsBtn" aria-label="Settings" type="button">&#9881;</button>
   </header>
 
-  <section id="goalBar">
-    <div id="goalHint" class="goal-hint" aria-live="polite"></div>
+  <section id="tabBar">
+    <nav id="bottomNav">
+      <button class="tab" data-panel="activitiesModal">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M10 8h4M10 12h4M10 16h2"/></svg>
+        <span>Activities</span>
+        <span class="tab-badge" aria-hidden="true"></span>
+      </button>
+      <button class="tab" data-panel="grimoireModal">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>
+        <span>Grimoire</span>
+        <span class="tab-badge" aria-hidden="true"></span>
+      </button>
+      <button class="tab" data-panel="towerModal">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="9" y="12" width="6" height="6"/><rect x="7" y="6" width="10" height="6"/><rect x="10" y="2" width="4" height="4"/></svg>
+        <span>Tower</span>
+        <span class="tab-badge" aria-hidden="true"></span>
+      </button>
+      <button class="tab" data-panel="relicsModal">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7-9 13-9-13z"/><path d="M3 9h18"/></svg>
+        <span>Relics</span>
+        <span class="tab-badge" aria-hidden="true"></span>
+      </button>
+      <button id="ascensionTab" class="tab tab-locked" data-panel="ascensionModal" title="Unlocks at 50 floors">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+        <span>Ascension</span>
+        <span class="tab-badge" aria-hidden="true"></span>
+      </button>
+    </nav>
   </section>
 
   <main id="main">
     <div id="towerContainer"></div>
   </main>
-
-  <nav id="bottomNav">
-    <button class="tab" data-panel="activitiesModal">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M10 8h4M10 12h4M10 16h2"/></svg>
-      <span>Activities</span>
-      <span class="tab-badge" aria-hidden="true"></span>
-    </button>
-    <button class="tab" data-panel="grimoireModal">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h8M8 15h4"/></svg>
-      <span>Grimoire</span>
-      <span class="tab-badge" aria-hidden="true"></span>
-    </button>
-    <button class="tab" data-panel="towerModal">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="9" y="12" width="6" height="6"/><rect x="7" y="6" width="10" height="6"/><rect x="10" y="2" width="4" height="4"/></svg>
-      <span>Tower</span>
-      <span class="tab-badge" aria-hidden="true"></span>
-    </button>
-    <button class="tab" data-panel="relicsModal">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7-9 13-9-13z"/><path d="M3 9h18"/></svg>
-      <span>Relics</span>
-      <span class="tab-badge" aria-hidden="true"></span>
-    </button>
-    <button id="ascensionTab" class="tab tab-locked" data-panel="ascensionModal" title="Unlocks at 50 floors">
-      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
-      <span>Ascension</span>
-      <span class="tab-badge" aria-hidden="true"></span>
-    </button>
-  </nav>
 
   <div id="activitiesModal" class="panel-modal">
     <div class="panel-content">
@@ -900,7 +970,7 @@
         <h2>Activities</h2>
         <button class="panel-close" aria-label="Close" onclick="closePanel('activitiesModal')">&times;</button>
       </div>
-      <p class="section-title">Spend stamina to improve your tower. Stamina recovers over time and is boosted by time magic (Time Dilation, Arcane Harvest).</p>
+      <p class="section-title">Spend stamina and focus to perform actions that will improve your tower and your magic.</p>
       <div id="activities"></div>
     </div>
   </div>
@@ -992,6 +1062,7 @@
       </div>
       <div class="settings-tabs" role="tablist" aria-label="Settings tabs">
         <button type="button" id="settingsTabPrefs" class="settings-tab active" role="tab" aria-selected="true">General</button>
+        <button type="button" id="settingsTabGlossary" class="settings-tab" role="tab" aria-selected="false">Glossary</button>
         <button type="button" id="settingsTabKeys" class="settings-tab" role="tab" aria-selected="false">Keybinds</button>
       </div>
 
@@ -1028,10 +1099,53 @@
           <p class="settings-section-title">Reset</p>
           <button type="button" onclick="resetGame()" class="settings-btn settings-btn-danger">Reset save (clear all progress)</button>
         </div>
+      </div>
 
-        <div class="settings-section settings-section-dev">
-          <p class="settings-section-title">Developer</p>
-          <button type="button" onclick="addTestMana()" class="settings-btn settings-btn-dev">+100000 Mana</button>
+      <div id="settingsPageGlossary" class="settings-page hidden">
+        <div class="settings-section">
+          <p class="settings-section-title">Glossary</p>
+          <div class="glossary-list">
+            <div class="glossary-item">
+              <div class="term">Mana</div>
+              <div class="desc">Your main resource. Generated over time and by clicking the tower. Spend it on spells, rooms, and upgrades.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Stamina</div>
+              <div class="desc">Recovers over time. Spend it in Activities to gain permanent or run-long bonuses.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Focus</div>
+              <div class="desc">Regenerates after resting (idle). Used to cast powerful spells and perform focused activities.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Mana Fonts</div>
+              <div class="desc">Passive generators that increase mana/sec. Boosted by floors, sigils, and certain rooms.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Floors & Rooms</div>
+              <div class="desc">Each new floor adds a room. Rooms provide bonuses to mana, stamina, or spell effects.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Activities</div>
+              <div class="desc">Actions that consume stamina and focus to provide upgrades, buffs, or resources.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Spells</div>
+              <div class="desc">Active spells give short bursts; passive spells give permanent boosts when memorized.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Prestige & Ascension</div>
+              <div class="desc">Reset progress for permanent bonuses. Ascension is a higher reset tier than Prestige.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Relics</div>
+              <div class="desc">Run-based modifiers earned from milestones or Relic Hunts. They reshape your build.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Sigils</div>
+              <div class="desc">Stacks that boost Mana Font output. Forged via Activities and reset on Prestige.</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1100,6 +1214,7 @@
     </div>
   </div>
 
+  <div id="tutorialLayer" aria-hidden="true"></div>
   <div id="toastContainer"></div>
 
   <div id="offlineModal" class="modal">
@@ -1357,8 +1472,6 @@
       return acc;
     }, {});
     const SPECIAL_ROOM_NAMES = Object.keys(ROOMS).filter(n => ROOMS[n].buildableOnce);
-    const ORIGINAL_SPECIAL = ['Vault', 'Library', 'Observatory'];
-    const RANDOM_FLOOR_ROOMS = SPECIAL_ROOM_NAMES.filter(n => !ORIGINAL_SPECIAL.includes(n));
     function initialSpecialRooms() {
       const o = {};
       SPECIAL_ROOM_NAMES.forEach(n => { o[n] = { built: false, level: 0 }; });
@@ -1476,16 +1589,19 @@
     const manaFillEl = document.getElementById('manaFill');
     const staminaFillEl = document.getElementById('staminaFill');
     const focusFillEl = document.getElementById('focusFill');
-    const goalHintEl = document.getElementById('goalHint');
-    const goalBarEl = document.getElementById('goalBar');
+    const tutorialLayer = document.getElementById('tutorialLayer');
+    const towerTab = document.querySelector('#bottomNav .tab[data-panel="towerModal"]');
+    const activitiesTab = document.querySelector('#bottomNav .tab[data-panel="activitiesModal"]');
     const activitiesDiv = document.getElementById('activities');
     const soundCheckbox = document.getElementById('soundCheckbox');
     const tutorialCheckbox = document.getElementById('tutorialCheckbox');
     const tutorialResetBtn = document.getElementById('tutorialResetBtn');
     const settingsTabPrefs = document.getElementById('settingsTabPrefs');
     const settingsTabKeys = document.getElementById('settingsTabKeys');
+    const settingsTabGlossary = document.getElementById('settingsTabGlossary');
     const settingsPagePrefs = document.getElementById('settingsPagePrefs');
     const settingsPageKeys = document.getElementById('settingsPageKeys');
+    const settingsPageGlossary = document.getElementById('settingsPageGlossary');
     const statsModal = document.getElementById('statsModal');
     const introModal = document.getElementById('introModal');
     const introCloseBtn = document.getElementById('introCloseBtn');
@@ -1597,6 +1713,9 @@
         if (lvl > 0) total += lvl * info[key];
       });
       return total;
+    }
+    function unlockedRoomNames() {
+      return SPECIAL_ROOM_NAMES.filter(name => ROOMS[name] && ROOMS[name].unlock());
     }
     function relicModifiers() {
       const mods = {
@@ -2353,8 +2472,7 @@
           game.stamina -= cost;
           game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
           const sr = game.specialRooms || {};
-          const built = SPECIAL_ROOM_NAMES.filter(n => sr[n] && sr[n].built);
-          const available = RANDOM_FLOOR_ROOMS.filter(n => !(sr[n] && sr[n].built));
+          const available = unlockedRoomNames().filter(n => !(sr[n] && sr[n].built));
           if (available.length > 0) {
             game.scryLockedRoom = available[Math.floor(Math.random() * available.length)];
             showToast('Scry', 'Next build will offer: ' + game.scryLockedRoom);
@@ -2569,43 +2687,93 @@
     // -------------------- RENDER --------------------
     function renderAll() { renderUI(); renderSpells(); renderTower(); renderActivities(); renderRelicsPanel(); }
 
-    function renderGoalHint() {
-      if (!goalHintEl) return;
+    function clearTutorialLayer() {
+      if (!tutorialLayer) return;
+      tutorialLayer.innerHTML = '';
+    }
+    function addTutorialTip(target, html, pos) {
+      if (!tutorialLayer || !target) return;
+      const tip = document.createElement('div');
+      tip.className = 'tutorial-tip pos-' + pos;
+      tip.innerHTML = html;
+      tutorialLayer.appendChild(tip);
+      const rect = target.getBoundingClientRect();
+      const tipRect = tip.getBoundingClientRect();
+      const gap = 12;
+      let top = rect.top;
+      let left = rect.left;
+      if (pos === 'top') {
+        top = rect.top - tipRect.height - gap;
+        left = rect.left + rect.width / 2 - tipRect.width / 2;
+      } else if (pos === 'bottom') {
+        top = rect.bottom + gap;
+        left = rect.left + rect.width / 2 - tipRect.width / 2;
+      } else if (pos === 'left') {
+        top = rect.top + rect.height / 2 - tipRect.height / 2;
+        left = rect.left - tipRect.width - gap;
+      } else {
+        top = rect.top + rect.height / 2 - tipRect.height / 2;
+        left = rect.right + gap;
+      }
+      const pad = 8;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      left = Math.max(pad, Math.min(left, vw - tipRect.width - pad));
+      top = Math.max(pad, Math.min(top, vh - tipRect.height - pad));
+      tip.style.left = left + 'px';
+      tip.style.top = top + 'px';
+    }
+    function renderTutorialHints() {
+      if (!tutorialLayer) return;
       if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
       if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true };
       if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
+      if (!game.settings.showTutorial || game.tutorial.done) { clearTutorialLayer(); return; }
 
-      if (goalBarEl) goalBarEl.style.display = (!game.settings.showTutorial || game.tutorial.done) ? 'none' : '';
-      if (!game.settings.showTutorial || game.tutorial.done) return;
-
-      // Quick-start tutorial (3 tiny tasks), then the banner disappears.
       const task1 = !!game.tutorial.clicked;
       const task2 = (game.manaFonts || 0) >= 1;
       const task3 = totalFloors() >= 1;
-      const doneCount = (task1 ? 1 : 0) + (task2 ? 1 : 0) + (task3 ? 1 : 0);
-
-      if (doneCount >= 3) {
+      const task4 = (game.stats && game.stats.totalStaminaSpent) > 0;
+      const doneCount = [task1, task2, task3, task4].filter(Boolean).length;
+      if (doneCount >= 4) {
         game.tutorial.done = true;
+        clearTutorialLayer();
         if (!game.tutorial.completedToast) {
           game.tutorial.completedToast = true;
           showToast('All set', 'Tutorial complete. You can keep building your tower!');
         }
-        if (goalBarEl) goalBarEl.style.display = 'none';
         return;
       }
 
-      let nextLine = '';
-      if (!task1) nextLine = 'Click the tower area to collect mana.';
-      else if (!task2) nextLine = 'Buy a Mana Font in the Tower tab (tip: press <span class="k">M</span>).';
-      else nextLine = 'Raise your first tower floor in the Tower tab.';
-
-      const box = (done) => done ? '&#10003;' : '&#9726;';
-      const hint =
-        '<strong>Quick start (' + doneCount + '/3):</strong> ' + nextLine +
-        '<br><span class="muted">' + box(task1) + ' Click once to collect mana</span>' +
-        '<br><span class="muted">' + box(task2) + ' Buy 1 Mana Font</span>' +
-        '<br><span class="muted">' + box(task3) + ' Raise 1 tower floor</span>';
-      if (goalHintEl.innerHTML !== hint) goalHintEl.innerHTML = hint;
+      clearTutorialLayer();
+      if (!task1) {
+        addTutorialTip(towerContainer, '<strong>Start here</strong><br>Click the tower to collect mana.', 'right');
+        return;
+      }
+      if (!task2) {
+        if (!towerModal.classList.contains('show')) {
+          addTutorialTip(towerTab, '<strong>Tower</strong><br>Open this tab to buy a Mana Font.', 'bottom');
+        } else {
+          addTutorialTip(manaFontBtn, '<strong>Mana Font</strong><br>Buy one to grow mana/sec. (Tip: press M)', 'left');
+        }
+        return;
+      }
+      if (!task3) {
+        if (!towerModal.classList.contains('show')) {
+          addTutorialTip(towerTab, '<strong>Raise a floor</strong><br>Open Tower to build your first room.', 'bottom');
+        } else {
+          addTutorialTip(towerBtn, '<strong>Raise a floor</strong><br>Build your first room to grow the tower.', 'left');
+        }
+        return;
+      }
+      if (!task4) {
+        if (!document.getElementById('activitiesModal').classList.contains('show')) {
+          addTutorialTip(activitiesTab, '<strong>Activities</strong><br>Spend stamina and focus to gain upgrades.', 'bottom');
+        } else {
+          const firstAction = activitiesDiv ? activitiesDiv.querySelector('button') : null;
+          addTutorialTip(firstAction || activitiesTab, '<strong>Try an action</strong><br>Actions improve your tower and magic.', 'left');
+        }
+      }
     }
 
     function updateBadges() {
@@ -2858,7 +3026,7 @@
       renderRoomSummary();
       renderTowerUpgrades();
       renderTimeDilationStatus();
-      renderGoalHint();
+      renderTutorialHints();
       ensureRelicDraft();
       updateBadges();
     }
@@ -2894,7 +3062,16 @@
       const stamina = Number(game.stamina) || 0;
       const focus = Number(game.focus) || 0;
       const EPS = 1e-3;
+      const unlocked = [];
+      const locked = [];
       ACTIVITIES.forEach(a => {
+        const unlockFloors = Number(a.unlockFloors) || 0;
+        if (floors >= unlockFloors) unlocked.push(a);
+        else locked.push(a);
+      });
+      locked.sort((a, b) => (Number(a.unlockFloors) || 0) - (Number(b.unlockFloors) || 0));
+      const activitiesToShow = unlocked.concat(locked.slice(0, 3));
+      activitiesToShow.forEach(a => {
         const btn = document.createElement('button');
         btn.textContent = a.name;
         const unlockFloors = Number(a.unlockFloors) || 0;
@@ -3100,7 +3277,7 @@
     function renderTower() {
       towerContainer.innerHTML = '';
       const sr = game.specialRooms || {};
-      const blocks = [];
+      const blocks = [{ type: 'Foundation' }];
       for (let i = 0; i < (game.stairs || 0); i++) {
         const side = i % 3 === 1 ? 'side-left' : (i % 3 === 2 ? 'side-right' : '');
         blocks.push({ type: 'Stairs', side });
@@ -3115,8 +3292,9 @@
         const addCrenel = isTop && height >= 6;
         const addTurrets = isTop && height >= 14;
         const tier = towerTier(height);
-        el.className = 'tower-block tier-' + tier + (b.side ? ' ' + b.side : '');
-        const label = b.level ? b.type + ' Lv.' + b.level : b.type;
+        const foundationClass = b.type === 'Foundation' ? ' foundation' : '';
+        el.className = 'tower-block tier-' + tier + foundationClass + (b.side ? ' ' + b.side : '');
+        const label = (b.type === 'Foundation') ? 'Foundation' : (b.level ? b.type + ' Lv.' + b.level : b.type);
         const topper = (addCrenel || addTurrets)
           ? '<div class="tower-topper">' +
               (addCrenel ? '<div class="tower-crenel"></div>' : '') +
@@ -3132,7 +3310,11 @@
           windowsHtml = '<div class="tower-windows">' + win.join('') + '</div>';
         }
         el.innerHTML = topper + windowsHtml + '<div class="room">' + label + '</div>';
-        if (b.type !== 'Stairs' && ROOMS[b.type]) {
+        if (b.type === 'Foundation') {
+          el.style.cursor = 'pointer';
+          el.title = 'Foundation: the base of your tower.';
+          el.onclick = openFoundationDetail;
+        } else if (b.type !== 'Stairs' && ROOMS[b.type]) {
           el.style.cursor = 'pointer';
           el.dataset.room = b.type;
           el.title = ROOMS[b.type].desc || '';
@@ -3145,6 +3327,7 @@
     function renderRoomSummary() {
       const sr = game.specialRooms || {};
       let html = '<strong>Rooms</strong><br>';
+      html += 'Foundation<br><span class="cost">The base of your tower. No bonuses.</span><br>';
       if ((game.stairs || 0) > 0) html += 'Stairs x' + game.stairs + '<br><span class="cost">' + (ROOMS.Stairs && ROOMS.Stairs.desc) + '</span><br>';
       SPECIAL_ROOM_NAMES.forEach(name => {
         const r = sr[name];
@@ -3215,16 +3398,18 @@
         if (Math.random() < 0.12) game.nextFloorCursed = true;
         else if (Math.random() < 0.12) game.nextFloorBonus = true;
       }
-      const built = SPECIAL_ROOM_NAMES.filter(n => sr[n] && sr[n].built);
-      const duplicateRoomChoice = built.length > 0 && Math.random() < 0.15 ? built[Math.floor(Math.random() * built.length)] : null;
       const cost = effectiveFloorCost();
       const floorStaminaCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
-      const addCard = (name, info) => {
+      const suffix = game.nextFloorCursed ? ' (Cursed: 1.5× cost, 2× effect)' : (game.nextFloorBonus ? ' (Bonus: free)' : '');
+      const levelGain = game.nextFloorCursed ? 2 : 1;
+      const addCard = (name) => {
+        const info = ROOMS[name];
+        if (!info) return;
         const card = document.createElement('div');
         card.className = 'room-card';
-        let label = name;
-        if (game.nextFloorCursed) label += ' (Cursed: 1.5× cost, 2× effect)';
-        else if (game.nextFloorBonus) label += ' (Bonus: free)';
+        const built = sr[name] && sr[name].built;
+        let label = built ? ('Duplicate: +' + levelGain + ' lvl to ' + name) : name;
+        if (suffix) label += suffix;
         card.textContent = label;
         const tooltip = document.createElement('span');
         tooltip.className = 'tooltip';
@@ -3245,8 +3430,13 @@
             game.mana -= cost;
             game.stamina -= floorStaminaCost;
             if (!sr[name]) game.specialRooms[name] = { built: false, level: 0 };
-            game.specialRooms[name].built = true;
-            game.specialRooms[name].level = game.nextFloorCursed ? 2 : 1;
+            if (built) {
+              sr[name].level = (sr[name].level || 1) + levelGain;
+              game.stairs++;
+            } else {
+              game.specialRooms[name].built = true;
+              game.specialRooms[name].level = levelGain;
+            }
             game.nextFloorCursed = false;
             game.nextFloorBonus = false;
             game.scryLockedRoom = null;
@@ -3256,77 +3446,39 @@
         }
         roomChoices.appendChild(card);
       };
-      const addDuplicateCard = (roomName) => {
-        const card = document.createElement('div');
-        card.className = 'room-card';
-        card.textContent = 'Duplicate: +1 lvl to ' + roomName;
-        const info = ROOMS[roomName];
-        const tooltip = document.createElement('span');
-        tooltip.className = 'tooltip';
-        tooltip.textContent = (info && info.desc) ? info.desc : 'Gain +1 level to this room.';
-        card.appendChild(tooltip);
-        card.onclick = () => {
-          if (game.mana < cost || game.stamina < floorStaminaCost) {
-            showToast('Need more resources', 'This floor costs ' + formatNum(cost) + ' mana and ' + formatNum(Math.floor(floorStaminaCost)) + ' stamina.');
-            return;
-          }
-          game.mana -= cost;
-          game.stamina -= floorStaminaCost;
-          const r = game.specialRooms[roomName];
-          if (r && r.built) r.level = (r.level || 1) + 1;
-          game.stairs++;
-          game.nextFloorCursed = false;
-          game.nextFloorBonus = false;
-          game.scryLockedRoom = null;
-          roomModal.style.display = 'none';
-          renderAll();
-        };
-        roomChoices.appendChild(card);
-      };
-      if (duplicateRoomChoice) addDuplicateCard(duplicateRoomChoice);
-      // Scry: if player locked a room, offer it first
-      if (game.scryLockedRoom && ROOMS[game.scryLockedRoom] && !(sr[game.scryLockedRoom] && sr[game.scryLockedRoom].built)) {
-        addCard(game.scryLockedRoom, ROOMS[game.scryLockedRoom]);
+      const unlocked = unlockedRoomNames();
+      if (unlocked.length === 0) {
+        roomChoices.innerHTML = '<div class="stat">No rooms available yet.</div>';
+        return;
       }
-      // One random room from the "new" list — exclude already-offered (Scry, Arcanum, Hall, Chronurgy, Leyline when offered explicitly)
-      const offered = new Set();
-      if (game.scryLockedRoom) offered.add(game.scryLockedRoom);
-      const availableRandom = RANDOM_FLOOR_ROOMS.filter(name => !(sr[name] && sr[name].built) && !offered.has(name)
-        && !(totalFloors() >= 20 && name === 'Arcanum')
-        && !(totalFloors() >= 30 && name === 'Hall of Preservation')
-        && !(totalFloors() >= 40 && name === 'Chronurgy Chamber')
-        && !(totalFloors() >= 50 && name === 'Leyline Nexus')
-        && !(totalFloors() >= 5 && name === 'Apprentice Quarters')
-        && !(totalFloors() >= 12 && name === 'Focus Alcove')
-        && !(totalFloors() >= 30 && name === 'Aether Loom')
-        && !(totalFloors() >= 45 && name === 'Sigil Vault')
-        && !(totalFloors() >= 70 && name === 'Curio Gallery')
-        && !(totalFloors() >= 90 && name === 'Planar Gate'));
-      if (availableRandom.length > 0) {
-        const randomName = availableRandom[Math.floor(Math.random() * availableRandom.length)];
-        addCard(randomName, ROOMS[randomName]);
+      const offered = [];
+      if (game.scryLockedRoom && unlocked.includes(game.scryLockedRoom)) {
+        offered.push(game.scryLockedRoom);
       }
-      ORIGINAL_SPECIAL.forEach(name => {
-        if (sr[name] && sr[name].built) return;
-        addCard(name, ROOMS[name]);
-      });
-      if (totalFloors() >= 20 && (!sr['Arcanum'] || !sr['Arcanum'].built)) addCard('Arcanum', ROOMS['Arcanum']);
-      if (totalFloors() >= 30 && (!sr['Hall of Preservation'] || !sr['Hall of Preservation'].built)) addCard('Hall of Preservation', ROOMS['Hall of Preservation']);
-      if (totalFloors() >= 40 && (!sr['Chronurgy Chamber'] || !sr['Chronurgy Chamber'].built)) addCard('Chronurgy Chamber', ROOMS['Chronurgy Chamber']);
-      if (totalFloors() >= 50 && (!sr['Leyline Nexus'] || !sr['Leyline Nexus'].built)) addCard('Leyline Nexus', ROOMS['Leyline Nexus']);
-      if (totalFloors() >= 5 && (!sr['Apprentice Quarters'] || !sr['Apprentice Quarters'].built)) addCard('Apprentice Quarters', ROOMS['Apprentice Quarters']);
-      if (totalFloors() >= 12 && (!sr['Focus Alcove'] || !sr['Focus Alcove'].built)) addCard('Focus Alcove', ROOMS['Focus Alcove']);
-      if (totalFloors() >= 30 && (!sr['Aether Loom'] || !sr['Aether Loom'].built)) addCard('Aether Loom', ROOMS['Aether Loom']);
-      if (totalFloors() >= 45 && (!sr['Sigil Vault'] || !sr['Sigil Vault'].built)) addCard('Sigil Vault', ROOMS['Sigil Vault']);
-      if (totalFloors() >= 70 && (!sr['Curio Gallery'] || !sr['Curio Gallery'].built)) addCard('Curio Gallery', ROOMS['Curio Gallery']);
-      if (totalFloors() >= 90 && (!sr['Planar Gate'] || !sr['Planar Gate'].built)) addCard('Planar Gate', ROOMS['Planar Gate']);
+      const pool = unlocked.filter(name => !offered.includes(name));
+      while (offered.length < 3 && pool.length > 0) {
+        const idx = Math.floor(Math.random() * pool.length);
+        offered.push(pool.splice(idx, 1)[0]);
+      }
+      offered.forEach(name => addCard(name));
     }
 
     let currentRoomDetailName = null;
+    function openFoundationDetail() {
+      currentRoomDetailName = 'Foundation';
+      roomDetailTitle.textContent = 'Foundation';
+      roomDetailDesc.textContent = 'The bedrock of your mage tower. It provides stability but no bonuses.';
+      roomDetailLevel.textContent = '0';
+      roomDetailUpgradeBtn.style.display = 'none';
+      roomDetailUpgradeBtn.disabled = true;
+      roomDetailModal.style.display = 'flex';
+    }
     function openRoomDetail(roomName) {
       const info = ROOMS[roomName];
       const r = (game.specialRooms || {})[roomName];
       if (!info || !r || !r.built) return;
+      roomDetailUpgradeBtn.style.display = '';
+      roomDetailUpgradeBtn.disabled = false;
       currentRoomDetailName = roomName;
       roomDetailTitle.textContent = roomName;
       roomDetailDesc.textContent = info.desc || '';
@@ -3360,6 +3512,7 @@
     }
     function closeRoomDetail() {
       roomDetailModal.style.display = 'none';
+      roomDetailUpgradeBtn.style.display = '';
       currentRoomDetailName = null;
     }
     roomDetailClose.onclick = closeRoomDetail;
@@ -3389,16 +3542,23 @@
     settingsModal.querySelector('.modal-content').addEventListener('click', (e) => e.stopPropagation());
 
     function setSettingsTab(tab) {
+      const onPrefs = tab === 'prefs';
+      const onGlossary = tab === 'glossary';
       const onKeys = tab === 'keys';
       if (settingsTabPrefs) {
-        settingsTabPrefs.classList.toggle('active', !onKeys);
-        settingsTabPrefs.setAttribute('aria-selected', String(!onKeys));
+        settingsTabPrefs.classList.toggle('active', onPrefs);
+        settingsTabPrefs.setAttribute('aria-selected', String(onPrefs));
+      }
+      if (settingsTabGlossary) {
+        settingsTabGlossary.classList.toggle('active', onGlossary);
+        settingsTabGlossary.setAttribute('aria-selected', String(onGlossary));
       }
       if (settingsTabKeys) {
         settingsTabKeys.classList.toggle('active', onKeys);
         settingsTabKeys.setAttribute('aria-selected', String(onKeys));
       }
-      if (settingsPagePrefs) settingsPagePrefs.classList.toggle('hidden', onKeys);
+      if (settingsPagePrefs) settingsPagePrefs.classList.toggle('hidden', !onPrefs);
+      if (settingsPageGlossary) settingsPageGlossary.classList.toggle('hidden', !onGlossary);
       if (settingsPageKeys) settingsPageKeys.classList.toggle('hidden', !onKeys);
     }
 
@@ -3472,6 +3632,7 @@
     document.querySelectorAll('.panel-content').forEach(content => {
       content.addEventListener('click', (e) => e.stopPropagation());
     });
+    window.addEventListener('resize', () => { renderTutorialHints(); });
 
     soundCheckbox.checked = game.soundEnabled;
     soundCheckbox.onchange = () => { game.soundEnabled = soundCheckbox.checked; };
@@ -3480,16 +3641,17 @@
       tutorialCheckbox.checked = !!game.settings.showTutorial;
       tutorialCheckbox.onchange = () => {
         game.settings.showTutorial = tutorialCheckbox.checked;
-        renderGoalHint();
+        renderTutorialHints();
       };
     }
     if (tutorialResetBtn) {
       tutorialResetBtn.onclick = () => {
         game.tutorial = { clicked: false, done: false, completedToast: false };
-        renderGoalHint();
+        renderTutorialHints();
       };
     }
     if (settingsTabPrefs) settingsTabPrefs.onclick = () => setSettingsTab('prefs');
+    if (settingsTabGlossary) settingsTabGlossary.onclick = () => setSettingsTab('glossary');
     if (settingsTabKeys) settingsTabKeys.onclick = () => setSettingsTab('keys');
     if (settingsBtn) {
       settingsBtn.onclick = () => {
@@ -3571,11 +3733,6 @@
         showToast('Import failed', String(e.message));
       }
     };
-
-    function addTestMana() {
-      game.mana = Math.min(game.mana + 100000, maxMana());
-      renderAll();
-    }
 
     function resetGame() {
       if (!confirm('Reset all progress? This cannot be undone.')) return;
