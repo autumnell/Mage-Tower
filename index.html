@@ -463,6 +463,11 @@
     .goal-hint strong { color: var(--text); font-weight: 700; }
     .goal-hint .k { color: var(--accent); font-weight: 700; }
     .goal-hint .muted { color: var(--text-muted); opacity: 0.85; }
+    #gameLayout {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
     #main {
       flex: 1;
       display: flex;
@@ -472,6 +477,7 @@
       position: relative;
       overflow: hidden;
       min-height: 0;
+      padding: 0 24px 24px;
     }
     /* subtle animated “stars” */
     #main::before, #main::after {
@@ -492,20 +498,21 @@
     }
     #main::after { opacity: 0.18; animation-duration: 28s; animation-direction: reverse; }
     @keyframes drift { from { transform: translate3d(0,0,0); } to { transform: translate3d(8%, 6%, 0); } }
-    #main #towerContainer { margin-bottom: 80px; }
+    #main #towerContainer { margin-bottom: 24px; }
     #bottomNav {
       display: flex;
-      justify-content: center;
-      gap: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
       background: var(--bg-panel);
-      border-top: 1px solid var(--border);
-      padding: 0;
-      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+      border-right: 1px solid var(--border);
+      padding: 12px 8px;
+      width: 200px;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
     }
     #bottomNav .tab {
-      flex: 1;
-      max-width: 200px;
-      padding: 14px 18px;
+      width: 100%;
+      padding: 12px 16px;
       border: none;
       background: transparent;
       color: var(--text-muted);
@@ -513,12 +520,13 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
-      border-bottom: 3px solid transparent;
+      border-right: 3px solid transparent;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 10px;
       font-family: inherit;
+      text-align: left;
     }
     #bottomNav .tab .tab-icon { width: 26px; height: 26px; flex-shrink: 0; opacity: 0.9; }
     #bottomNav .tab .tab-badge {
@@ -529,13 +537,13 @@
       border: 1px solid rgba(124, 156, 244, 0.3);
       background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), var(--accent));
       box-shadow: 0 0 12px var(--accent-glow);
-      margin-left: 8px;
+      margin-left: auto;
       flex: 0 0 auto;
     }
     #bottomNav .tab.has-badge .tab-badge { display: inline-flex; }
     #bottomNav .tab:hover { color: var(--text); background: var(--accent-dim); }
     #bottomNav .tab:hover .tab-icon { opacity: 1; }
-    #bottomNav .tab.active { color: var(--accent); background: var(--accent-dim); border-bottom-color: var(--accent); }
+    #bottomNav .tab.active { color: var(--accent); background: var(--accent-dim); border-right-color: var(--accent); }
     #bottomNav .tab.active .tab-icon { opacity: 1; filter: drop-shadow(0 0 8px var(--accent-glow)); }
     #bottomNav .tab.tab-locked { opacity: 0.5; cursor: not-allowed; pointer-events: auto; }
     #bottomNav .tab.tab-locked:hover { color: var(--text-muted); background: transparent; }
@@ -766,23 +774,6 @@
       pointer-events: none;
     }
 
-    /* ===== POLISH: Auto-save indicator ===== */
-    #saveIndicator {
-      position: fixed;
-      bottom: 70px;
-      right: 16px;
-      font-size: 0.75em;
-      color: var(--text-muted);
-      opacity: 0.7;
-      pointer-events: none;
-      transition: opacity 0.3s;
-      z-index: 5;
-    }
-    #saveIndicator.saving {
-      color: var(--accent);
-      opacity: 1;
-    }
-
     /* ===== POLISH: Upgrade preview tooltip ===== */
     .upgrade-preview {
       font-size: 0.82em;
@@ -865,11 +856,8 @@
     <div id="goalHint" class="goal-hint" aria-live="polite"></div>
   </section>
 
-  <main id="main">
-    <div id="towerContainer"></div>
-  </main>
-
-  <nav id="bottomNav">
+  <div id="gameLayout">
+    <nav id="bottomNav">
     <button class="tab" data-panel="activitiesModal">
       <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M10 8h4M10 12h4M10 16h2"/></svg>
       <span>Activities</span>
@@ -895,7 +883,12 @@
       <span>Ascension</span>
       <span class="tab-badge" aria-hidden="true"></span>
     </button>
-  </nav>
+    </nav>
+
+    <main id="main">
+      <div id="towerContainer"></div>
+    </main>
+  </div>
 
   <div id="activitiesModal" class="panel-modal">
     <div class="panel-content">
@@ -1104,7 +1097,6 @@
   </div>
 
   <div id="toastContainer"></div>
-  <div id="saveIndicator">Saved</div>
 
   <div id="offlineModal" class="modal">
     <div class="modal-content offline-modal">
@@ -1217,16 +1209,7 @@
     }
 
     function showSaveIndicator(saving) {
-      const indicator = document.getElementById('saveIndicator');
-      if (!indicator) return;
-      if (saving) {
-        indicator.classList.add('saving');
-        indicator.textContent = 'Saving';
-      } else {
-        indicator.classList.remove('saving');
-        const now = new Date();
-        indicator.textContent = 'Saved ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      }
+      return;
     }
 
     function formatDuration(ms) {
@@ -3607,10 +3590,8 @@
     // -------------------- SAVE / LOAD / OFFLINE --------------------
     function saveGame() {
       if (window._resettingSave) return;
-      showSaveIndicator(true);
       game.lastSave = Date.now();
       localStorage.setItem('mageTowerSave', JSON.stringify(game));
-      setTimeout(() => showSaveIndicator(false), 300);
     }
 
     function loadGame() {
@@ -3710,6 +3691,7 @@
     loadGame();
     renderAll();
     checkAchievements();
+    openPanel('towerModal');
 
     if (!localStorage.getItem('mageTowerIntroSeen')) {
       introModal.style.display = 'flex';
