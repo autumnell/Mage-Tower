@@ -1559,6 +1559,7 @@
         leylineSurgeCasts: 0,
         focusSurgeCasts: 0,
         vigorInfusionCasts: 0,
+        transmutateCasts: 0,
         totalManaEarned: 0,
         totalSpellsCast: 0,
         timePlayedMs: 0,
@@ -1589,6 +1590,7 @@
       attuneDiscount: 0,
       ritualActivityCooldownEnd: 0,
       spellEchoNextFreeAt: 0,
+      transmutateCooldownEnd: 0,
       relics: [],
       relicDraft: [],
       relicDraftSeen: false,
@@ -2264,6 +2266,39 @@
     const SPELL_SWAP_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
     const ACTIVE_SPELLS = [
       {
+        id: 'transmutate',
+        name: 'Transmutate',
+        unlock: 0,
+        desc: 'Convert current mana into stamina at a 3:1 rate.',
+        cooldownMs: 6000,
+        cooldownKey: 'transmutateCooldownEnd',
+        effect: () => {
+          const now = Date.now();
+          if ((game.transmutateCooldownEnd || 0) > now) return;
+          const mana = game.mana || 0;
+          if (mana <= 0) return;
+          const casts = game.stats.transmutateCasts || 0;
+          const fraction = Math.min(1, 0.30 * (1 + casts * 0.05));
+          const staminaRoom = maxStamina() - (game.stamina || 0);
+          if (staminaRoom <= 0) return;
+          const maxSpendForStamina = staminaRoom * 3;
+          const manaSpend = Math.min(mana * fraction, maxSpendForStamina);
+          if (manaSpend <= 0) return;
+          game.mana -= manaSpend;
+          game.stamina = Math.min((game.stamina || 0) + manaSpend / 3, maxStamina());
+          recordActivityOrSpell();
+          game.stats.transmutateCasts = casts + 1;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          game.transmutateCooldownEnd = now + 6000;
+          playSound('spell');
+        },
+        costText: () => {
+          const casts = game.stats.transmutateCasts || 0;
+          const pct = Math.min(1, 0.30 * (1 + casts * 0.05)) * 100;
+          return 'Convert ' + pct.toFixed(0) + '% mana → stamina (3:1). Cooldown 6s.';
+        },
+      },
+      {
         id: 'timeDilation',
         name: 'Time Dilation',
         unlock: 5,
@@ -2835,7 +2870,10 @@
     }
     function renderTutorialHints() {
       if (!tutorialLayer) return;
-      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false, settingsOpened: false, keysSeen: false, glossarySeen: false };
+      if (typeof game.tutorial.settingsOpened !== 'boolean') game.tutorial.settingsOpened = false;
+      if (typeof game.tutorial.keysSeen !== 'boolean') game.tutorial.keysSeen = false;
+      if (typeof game.tutorial.glossarySeen !== 'boolean') game.tutorial.glossarySeen = false;
       if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
       if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
       ensureKeybinds();
@@ -3143,6 +3181,7 @@
         game.nextFloorDuplicate = null;
         game.nextFloorCursed = false;
         game.nextFloorBonus = false;
+        game.transmutateCooldownEnd = 0;
         game.stats.focusSurgeCasts = 0;
         game.stats.vigorInfusionCasts = 0;
         renderAll();
@@ -3348,6 +3387,11 @@
         const hideWhenActive = s.hideWhenActive && ((s.name === 'Time Dilation' && tdActive) || (s.harvestKey && harvestActive) || (s.leylineTapKey && leylineSurgeActive));
         if (hideWhenActive) return;
         const onSpellCooldown = s.name === 'Time Dilation' && game.active && game.active.cooldown > 0;
+        const cooldownKey = s.cooldownKey;
+        const cooldownMs = s.cooldownMs || 0;
+        const cooldownEnd = cooldownKey ? (game[cooldownKey] || 0) : 0;
+        const cooldownRem = Math.max(0, (cooldownEnd - Date.now()) / 1000);
+        const onCooldown = cooldownRem > 0;
         if (onSpellCooldown) return;
 
         const wrap = document.createElement('div');
@@ -3365,11 +3409,20 @@
         } else if (memorized) {
           const desc = document.createElement('span');
           desc.className = 'desc';
-          desc.innerHTML = s.desc + '<br><span class="detail">' + (s.costText ? s.costText() : '') + '</span>';
+          const cooldownText = onCooldown ? ('Cooldown ' + cooldownRem.toFixed(1) + 's') : '';
+          const detail = [s.costText ? s.costText() : '', cooldownText].filter(Boolean).join(' · ');
+          desc.innerHTML = s.desc + '<br><span class="detail">' + detail + '</span>';
           btn.appendChild(desc);
           btn.onclick = () => s.effect();
           const lowFocus = (s.focusCost != null && (game.focus || 0) < s.focusCost);
-          btn.disabled = lowFocus;
+          btn.disabled = lowFocus || onCooldown;
+          if (cooldownMs > 0) {
+            const overlay = document.createElement('div');
+            overlay.className = 'cooldown-overlay';
+            const frac = onCooldown ? (1 - Math.min(1, (cooldownRem * 1000) / cooldownMs)) : 1;
+            overlay.style.width = (frac * 100).toFixed(2) + '%';
+            btn.appendChild(overlay);
+          }
           const forgetBtn = document.createElement('button');
           forgetBtn.textContent = 'Forget';
           forgetBtn.className = 'spell-slot-btn';
@@ -3451,6 +3504,10 @@
         }
         passiveSpellsDiv.appendChild(wrap);
       });
+    }
+
+    function anyActiveSpellCooldown() {
+      return (game.transmutateCooldownEnd || 0) > Date.now();
     }
 
     function towerTier(f) { if (f >= 40) return 4; if (f >= 30) return 3; if (f >= 10) return 2; return 1; }
@@ -3558,11 +3615,13 @@
       game.relicDraftSeen = false;
       game.sigilStacks = 0;
       game.relicHuntCooldownEnd = 0;
+      game.transmutateCooldownEnd = 0;
       game.nextFloorDuplicate = null;
       game.nextFloorCursed = false;
       game.nextFloorBonus = false;
       game.stats.timeDilationCasts = 0;
       game.stats.arcaneHarvestCasts = 0;
+      game.stats.transmutateCasts = 0;
       game.stats.focusSurgeCasts = 0;
       game.stats.vigorInfusionCasts = 0;
       renderAll();
@@ -3936,7 +3995,7 @@
       try {
         const data = JSON.parse(raw);
         Object.assign(game, data);
-        if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
+        if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, transmutateCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
         if (!game.passive || typeof game.passive !== 'object') game.passive = {};
         const passiveDefaults = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
         Object.keys(passiveDefaults).forEach(k => { if (typeof game.passive[k] !== 'number') game.passive[k] = passiveDefaults[k]; });
@@ -3955,6 +4014,7 @@
         if (typeof game.relicHuntCooldownEnd !== 'number') game.relicHuntCooldownEnd = 0;
         game.relics = (game.relics || []).filter(id => RELIC_BY_ID[id]);
         game.relicDraft = (game.relicDraft || []).filter(id => RELIC_BY_ID[id]);
+        if (typeof game.transmutateCooldownEnd !== 'number') game.transmutateCooldownEnd = 0;
         if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
         if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
         if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
@@ -4020,7 +4080,7 @@
         delete game.rooms;
         delete game.floors;
       }
-      const statDefaults = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, totalFloorsEver: 0, totalStaminaSpent: 0, maxFloorsReached: 0, maxManaPerSecReached: 0 };
+      const statDefaults = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, transmutateCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, totalFloorsEver: 0, totalStaminaSpent: 0, maxFloorsReached: 0, maxManaPerSecReached: 0 };
       if (!game.stats) game.stats = { ...statDefaults, achievements: [] };
       Object.keys(statDefaults).forEach(k => { if (typeof game.stats[k] !== 'number') game.stats[k] = statDefaults[k]; });
       if (!Array.isArray(game.stats.achievements)) game.stats.achievements = [];
@@ -4046,6 +4106,7 @@
       if (typeof game.relicHuntCooldownEnd !== 'number') game.relicHuntCooldownEnd = 0;
       game.relics = (game.relics || []).filter(id => RELIC_BY_ID[id]);
       game.relicDraft = (game.relicDraft || []).filter(id => RELIC_BY_ID[id]);
+      if (typeof game.transmutateCooldownEnd !== 'number') game.transmutateCooldownEnd = 0;
       if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
       if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
       ensureKeybinds();
@@ -4084,6 +4145,7 @@
         if (game.ritualOfBindingCooldownEnd > 0) game.ritualOfBindingCooldownEnd = Math.max(now, (game.ritualOfBindingCooldownEnd || now) - cooldownTick);
         if (game.ritualActivityCooldownEnd > 0) game.ritualActivityCooldownEnd = Math.max(now, (game.ritualActivityCooldownEnd || now) - cooldownTick);
         if (game.relicHuntCooldownEnd > 0) game.relicHuntCooldownEnd = Math.max(now, (game.relicHuntCooldownEnd || now) - cooldownTick);
+        if (game.transmutateCooldownEnd > 0) game.transmutateCooldownEnd = Math.max(now, (game.transmutateCooldownEnd || now) - cooldownTick);
         if (dtMs >= 5 * 60 * 1000) {
           showOfflineProgress(gained, staminaGain, focusGain, dtMs);
         } else {
@@ -4122,6 +4184,7 @@
     let lastTickTime = Date.now();
     let towerPulseIndex = 0;
     let lastActivitiesRender = 0;
+    let lastSpellRender = 0;
     setInterval(() => {
       const now = Date.now();
       const dt = (now - lastTickTime) / 1000;
@@ -4184,6 +4247,14 @@
       if (now - lastActivitiesRender > 250) {
         renderActivities();
         lastActivitiesRender = now;
+      }
+      const cooldownActive = anyActiveSpellCooldown();
+      if (cooldownActive && now - lastSpellRender > 150) {
+        renderSpells();
+        lastSpellRender = now;
+      } else if (!cooldownActive && lastSpellRender !== 0) {
+        renderSpells();
+        lastSpellRender = 0;
       }
       checkAchievements();
 
