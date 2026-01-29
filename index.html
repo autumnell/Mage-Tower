@@ -788,7 +788,7 @@
     }
     .kb-row {
       display: grid;
-      grid-template-columns: 56px 1fr;
+      grid-template-columns: 56px 1fr auto;
       gap: 12px;
       align-items: center;
       padding: 8px 0;
@@ -807,6 +807,13 @@
       font-weight: 800;
       font-size: 0.9em;
       letter-spacing: 0.02em;
+    }
+    .kb-rebind {
+      width: auto;
+      margin: 0;
+      padding: 6px 10px;
+      font-size: 0.8em;
+      border-radius: 999px;
     }
     .kb-desc { color: var(--text-muted); font-size: 0.95em; }
     .settings-section-danger .settings-section-title { color: #b08080; }
@@ -1193,17 +1200,7 @@
       <div id="settingsPageKeys" class="settings-page hidden">
         <div class="settings-section">
           <p class="settings-section-title">Keybinds</p>
-          <div class="keybinds-list">
-            <div class="kb-row"><span class="kb-key">1</span><span class="kb-desc">Toggle Activities</span></div>
-            <div class="kb-row"><span class="kb-key">2</span><span class="kb-desc">Toggle Grimoire</span></div>
-            <div class="kb-row"><span class="kb-key">3</span><span class="kb-desc">Toggle Tower</span></div>
-            <div class="kb-row"><span class="kb-key">4</span><span class="kb-desc">Toggle Ascension (when unlocked)</span></div>
-            <div class="kb-row"><span class="kb-key">5</span><span class="kb-desc">Toggle Relics</span></div>
-            <div class="kb-row"><span class="kb-key">M</span><span class="kb-desc">Buy Mana Font (Tower)</span></div>
-            <div class="kb-row"><span class="kb-key">S</span><span class="kb-desc">Open/close Settings</span></div>
-            <div class="kb-row"><span class="kb-key">?</span><span class="kb-desc">Open “How to play”</span></div>
-            <div class="kb-row"><span class="kb-key">Esc</span><span class="kb-desc">Close overlays</span></div>
-          </div>
+          <div id="keybindsList" class="keybinds-list"></div>
           <p class="cost" style="margin-top:10px;">
             Tips: Shift-click = x10 and Ctrl-click = max for Mana Fonts + room upgrades.
           </p>
@@ -1336,6 +1333,7 @@
     const RELIC_HUNT_COOLDOWN_MS = 25 * 60 * 1000;
 
     let game;
+    let awaitingRebind = null;
 
     // -------------------- NUMBER FORMATTING --------------------
     function formatNum(n) {
@@ -1523,6 +1521,28 @@
       SPECIAL_ROOM_NAMES.forEach(n => { o[n] = { built: false, level: 0 }; });
       return o;
     }
+    const KEYBIND_DEFAULTS = {
+      activities: '1',
+      grimoire: '2',
+      tower: '3',
+      ascension: '4',
+      relics: '5',
+      manaFont: 'm',
+      settings: 's',
+      help: '?',
+      close: 'esc',
+    };
+    const KEYBIND_ACTIONS = [
+      { id: 'activities', label: 'Toggle Activities' },
+      { id: 'grimoire', label: 'Toggle Grimoire' },
+      { id: 'tower', label: 'Toggle Tower' },
+      { id: 'ascension', label: 'Toggle Ascension (when unlocked)' },
+      { id: 'relics', label: 'Toggle Relics' },
+      { id: 'manaFont', label: 'Buy Mana Font (Tower)' },
+      { id: 'settings', label: 'Open/close Settings' },
+      { id: 'help', label: 'Open “How to play”' },
+      { id: 'close', label: 'Close overlays' },
+    ];
     game = {
       mana: 0,
       stamina: 0,
@@ -1555,7 +1575,7 @@
       prestigeTokens: 0,
       prestigeTokenChoice: null,
       soundEnabled: false,
-      settings: { showTutorial: true },
+      settings: { showTutorial: true, keybinds: { ...KEYBIND_DEFAULTS } },
       lastSave: Date.now(),
       memorizedSpells: [],
       spellSwapCooldownEnd: 0,
@@ -1582,7 +1602,7 @@
       paragonSpent: { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 },
       lastActivityOrSpellAt: 0,
       exhaustedUntil: 0,
-      tutorial: { clicked: false, done: false, completedToast: false },
+      tutorial: { clicked: false, done: false, completedToast: false, settingsOpened: false, keysSeen: false, glossarySeen: false },
     };
     const STAIRS_MANA_PCT = 0.001;
     const UPGRADE_COST_BASE = 80;
@@ -1625,6 +1645,7 @@
     const prestigeDesc = document.getElementById('prestigeDesc');
     const prestigeSection = document.getElementById('prestigeSection');
     const ascensionTab = document.getElementById('ascensionTab');
+    const relicTab = document.querySelector('#bottomNav .tab[data-panel="relicsModal"]');
     const ascensionDesc = document.getElementById('ascensionDesc');
     const ascendBtn = document.getElementById('ascendBtn');
     const timeDilationStatus = document.getElementById('timeDilationStatus');
@@ -1664,6 +1685,7 @@
     const paragonNodes = document.getElementById('paragonNodes');
     const loreTip = document.getElementById('loreTip');
     const loreCloseBtn = document.getElementById('loreCloseBtn');
+    const keybindsList = document.getElementById('keybindsList');
     const toastContainer = document.getElementById('toastContainer');
     const manaBlock = document.getElementById('manaBlock');
     const staminaBlock = document.getElementById('staminaBlock');
@@ -1764,6 +1786,46 @@
     }
     function unlockedRoomNames() {
       return SPECIAL_ROOM_NAMES.filter(name => ROOMS[name] && ROOMS[name].unlock());
+    }
+    function ensureKeybinds() {
+      if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
+      if (!game.settings.keybinds || typeof game.settings.keybinds !== 'object') game.settings.keybinds = {};
+      Object.keys(KEYBIND_DEFAULTS).forEach(key => {
+        if (!game.settings.keybinds[key]) game.settings.keybinds[key] = KEYBIND_DEFAULTS[key];
+      });
+      return game.settings.keybinds;
+    }
+    function formatKeyLabel(key) {
+      if (!key) return '—';
+      if (key === 'esc') return 'Esc';
+      return key.length === 1 ? key.toUpperCase() : key;
+    }
+    function renderKeybinds() {
+      if (!keybindsList) return;
+      const binds = ensureKeybinds();
+      keybindsList.innerHTML = '';
+      KEYBIND_ACTIONS.forEach(action => {
+        const row = document.createElement('div');
+        row.className = 'kb-row';
+        const keyEl = document.createElement('span');
+        keyEl.className = 'kb-key';
+        keyEl.textContent = formatKeyLabel(binds[action.id]);
+        const desc = document.createElement('span');
+        desc.className = 'kb-desc';
+        desc.textContent = action.label;
+        const btn = document.createElement('button');
+        btn.className = 'kb-rebind';
+        btn.textContent = (awaitingRebind === action.id) ? 'Press key...' : 'Rebind';
+        btn.disabled = awaitingRebind && awaitingRebind !== action.id;
+        btn.onclick = () => {
+          awaitingRebind = action.id;
+          renderKeybinds();
+        };
+        row.appendChild(keyEl);
+        row.appendChild(desc);
+        row.appendChild(btn);
+        keybindsList.appendChild(row);
+      });
     }
     function relicModifiers() {
       const mods = {
@@ -2156,7 +2218,7 @@
       return { amount, crit };
     }
     function centerClick(e) {
-      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false, settingsOpened: false, keysSeen: false, glossarySeen: false };
       game.tutorial.clicked = true;
       recordActivityOrSpell();
       const g = clickManaGain();
@@ -2774,16 +2836,20 @@
     function renderTutorialHints() {
       if (!tutorialLayer) return;
       if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
-      if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true };
+      if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
       if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
+      ensureKeybinds();
       if (!game.settings.showTutorial || game.tutorial.done) { clearTutorialLayer(); return; }
 
       const task1 = !!game.tutorial.clicked;
       const task2 = (game.manaFonts || 0) >= 1;
       const task3 = totalFloors() >= 1;
       const task4 = (game.stats && game.stats.totalStaminaSpent) > 0;
-      const doneCount = [task1, task2, task3, task4].filter(Boolean).length;
-      if (doneCount >= 4) {
+      const task5 = !!game.tutorial.settingsOpened;
+      const task6 = !!game.tutorial.keysSeen;
+      const task7 = !!game.tutorial.glossarySeen;
+      const doneCount = [task1, task2, task3, task4, task5, task6, task7].filter(Boolean).length;
+      if (doneCount >= 7) {
         game.tutorial.done = true;
         clearTutorialLayer();
         if (!game.tutorial.completedToast) {
@@ -2847,6 +2913,26 @@
         } else {
           const firstAction = activitiesDiv ? activitiesDiv.querySelector('button') : null;
           addTutorialTip(firstAction || activitiesTab, '<strong>Try an action</strong><br>Actions improve your tower and magic.', 'left');
+        }
+        return;
+      }
+      if (!task5) {
+        addTutorialTip(settingsBtn, '<strong>Settings</strong><br>Open settings to customize and review info.', 'left');
+        return;
+      }
+      if (!task6) {
+        if (!settingsModal || settingsModal.style.display !== 'flex') {
+          addTutorialTip(settingsBtn, '<strong>Keybinds</strong><br>Open settings to view keybinds.', 'left');
+        } else {
+          addTutorialTip(settingsTabKeys, '<strong>Keybinds</strong><br>Open this tab to view or rebind keys.', 'bottom');
+        }
+        return;
+      }
+      if (!task7) {
+        if (!settingsModal || settingsModal.style.display !== 'flex') {
+          addTutorialTip(settingsBtn, '<strong>Glossary</strong><br>Open settings to view the glossary.', 'left');
+        } else {
+          addTutorialTip(settingsTabGlossary, '<strong>Glossary</strong><br>Open this tab to review core concepts.', 'bottom');
         }
       }
     }
@@ -3104,6 +3190,16 @@
         } else {
           ascensionTab.classList.add('tab-locked');
           ascensionTab.title = 'Unlocks at ' + ASCENSION_TAB_UNLOCK + ' floors';
+        }
+      }
+      if (relicTab) {
+        const relicUnlocked = (game.relics || []).length > 0;
+        if (relicUnlocked) {
+          relicTab.classList.remove('tab-locked');
+          relicTab.title = 'Relics';
+        } else {
+          relicTab.classList.add('tab-locked');
+          relicTab.title = 'Unlocks after claiming your first relic';
         }
       }
 
@@ -3644,6 +3740,11 @@
       if (settingsPagePrefs) settingsPagePrefs.classList.toggle('hidden', !onPrefs);
       if (settingsPageGlossary) settingsPageGlossary.classList.toggle('hidden', !onGlossary);
       if (settingsPageKeys) settingsPageKeys.classList.toggle('hidden', !onKeys);
+      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+      if (onKeys) game.tutorial.keysSeen = true;
+      if (onGlossary) game.tutorial.glossarySeen = true;
+      if (onKeys) renderKeybinds();
+      renderTutorialHints();
     }
 
     function openPanel(id) {
@@ -3663,7 +3764,10 @@
     document.querySelectorAll('#bottomNav .tab').forEach(tab => {
       tab.addEventListener('click', () => {
         if (tab.classList.contains('tab-locked')) {
-          showToast('Ascension', 'Unlocks at ' + ASCENSION_TAB_UNLOCK + ' floors.');
+          const panelId = tab.getAttribute('data-panel');
+          if (panelId === 'ascensionModal') showToast('Ascension', 'Unlocks at ' + ASCENSION_TAB_UNLOCK + ' floors.');
+          else if (panelId === 'relicsModal') showToast('Relics', 'Claim your first relic to unlock this tab.');
+          else showToast('Locked', 'This tab is currently locked.');
           return;
         }
         const panelId = tab.getAttribute('data-panel');
@@ -3690,26 +3794,65 @@
       if (modal.classList.contains('show')) closePanel(id);
       else openPanel(id);
     }
+    function normalizeKeyEvent(e) {
+      if (e.key === 'Escape') return 'esc';
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) return '?';
+      if (e.key && e.key.length === 1) return e.key.toLowerCase();
+      return null;
+    }
     document.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       const tag = (e.target && e.target.tagName) ? String(e.target.tagName).toLowerCase() : '';
       if (tag === 'input' || tag === 'textarea') return;
-      if (e.key === 'Escape') { closeAllOverlays(); return; }
-      const k = String(e.key || '').toLowerCase();
-      if (k === '1') togglePanelById('activitiesModal');
-      else if (k === '2') togglePanelById('grimoireModal');
-      else if (k === '3') togglePanelById('towerModal');
-      else if (k === '4') {
+
+      if (awaitingRebind) {
+        const nextKey = normalizeKeyEvent(e);
+        if (!nextKey) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const binds = ensureKeybinds();
+        binds[awaitingRebind] = nextKey;
+        awaitingRebind = null;
+        renderKeybinds();
+        renderTutorialHints();
+        return;
+      }
+
+      const k = normalizeKeyEvent(e);
+      if (!k) return;
+      const binds = ensureKeybinds();
+      if (k === binds.close) { closeAllOverlays(); return; }
+      if (k === binds.activities) togglePanelById('activitiesModal');
+      else if (k === binds.grimoire) togglePanelById('grimoireModal');
+      else if (k === binds.tower) togglePanelById('towerModal');
+      else if (k === binds.ascension) {
         if (ascensionTab && ascensionTab.classList.contains('tab-locked')) {
           showToast('Ascension', 'Unlocks at ' + ASCENSION_TAB_UNLOCK + ' floors.');
           return;
         }
         togglePanelById('ascensionModal');
       }
-      else if (k === '5') togglePanelById('relicsModal');
-      else if (k === 's') { if (settingsModal) settingsModal.style.display = settingsModal.style.display === 'flex' ? 'none' : 'flex'; }
-      else if (k === '?' || (k === '/' && e.shiftKey)) { if (introModal) introModal.style.display = 'flex'; }
-      else if (k === 'm') { manaFontBtn && manaFontBtn.click(); }
+      else if (k === binds.relics) {
+        if (relicTab && relicTab.classList.contains('tab-locked')) {
+          showToast('Relics', 'Claim your first relic to unlock this tab.');
+          return;
+        }
+        togglePanelById('relicsModal');
+      }
+      else if (k === binds.settings) {
+        if (settingsModal) {
+          const open = settingsModal.style.display !== 'flex';
+          settingsModal.style.display = open ? 'flex' : 'none';
+          if (open) {
+            setSettingsTab('prefs');
+            if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+            game.tutorial.settingsOpened = true;
+            renderTutorialHints();
+          }
+        }
+      }
+      else if (k === binds.help) { if (introModal) introModal.style.display = 'flex'; }
+      else if (k === binds.manaFont) { manaFontBtn && manaFontBtn.click(); }
     });
     document.querySelectorAll('.panel-modal').forEach(modal => {
       modal.addEventListener('click', (e) => { if (e.target === modal) closePanel(modal.id); });
@@ -3721,6 +3864,7 @@
 
     soundCheckbox.checked = game.soundEnabled;
     soundCheckbox.onchange = () => { game.soundEnabled = soundCheckbox.checked; };
+    renderKeybinds();
 
     if (tutorialCheckbox) {
       tutorialCheckbox.checked = !!game.settings.showTutorial;
@@ -3731,7 +3875,7 @@
     }
     if (tutorialResetBtn) {
       tutorialResetBtn.onclick = () => {
-        game.tutorial = { clicked: false, done: false, completedToast: false };
+        game.tutorial = { clicked: false, done: false, completedToast: false, settingsOpened: false, keysSeen: false, glossarySeen: false };
         renderTutorialHints();
       };
     }
@@ -3744,6 +3888,9 @@
       settingsBtn.onclick = () => {
         settingsModal.style.display = 'flex';
         setSettingsTab('prefs');
+        if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+        game.tutorial.settingsOpened = true;
+        renderTutorialHints();
       };
     }
 
@@ -3809,6 +3956,16 @@
         game.relics = (game.relics || []).filter(id => RELIC_BY_ID[id]);
         game.relicDraft = (game.relicDraft || []).filter(id => RELIC_BY_ID[id]);
         if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
+        if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
+        if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
+        ensureKeybinds();
+        if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false, settingsOpened: false, keysSeen: false, glossarySeen: false };
+        if (typeof game.tutorial.clicked !== 'boolean') game.tutorial.clicked = false;
+        if (typeof game.tutorial.done !== 'boolean') game.tutorial.done = false;
+        if (typeof game.tutorial.completedToast !== 'boolean') game.tutorial.completedToast = false;
+        if (typeof game.tutorial.settingsOpened !== 'boolean') game.tutorial.settingsOpened = false;
+        if (typeof game.tutorial.keysSeen !== 'boolean') game.tutorial.keysSeen = false;
+        if (typeof game.tutorial.glossarySeen !== 'boolean') game.tutorial.glossarySeen = false;
         if (typeof game.paragonSpent.focus !== 'number') game.paragonSpent.focus = 0;
         if (game.prestigeTokenChoice !== 'font' && game.prestigeTokenChoice !== 'study' && game.prestigeTokenChoice !== 'relic') game.prestigeTokenChoice = null;
         capMana();
@@ -3889,12 +4046,16 @@
       if (typeof game.relicHuntCooldownEnd !== 'number') game.relicHuntCooldownEnd = 0;
       game.relics = (game.relics || []).filter(id => RELIC_BY_ID[id]);
       game.relicDraft = (game.relicDraft || []).filter(id => RELIC_BY_ID[id]);
-      if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true };
+      if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true, keybinds: {} };
       if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
-      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
+      ensureKeybinds();
+      if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false, settingsOpened: false, keysSeen: false, glossarySeen: false };
       if (typeof game.tutorial.clicked !== 'boolean') game.tutorial.clicked = false;
       if (typeof game.tutorial.done !== 'boolean') game.tutorial.done = false;
       if (typeof game.tutorial.completedToast !== 'boolean') game.tutorial.completedToast = false;
+      if (typeof game.tutorial.settingsOpened !== 'boolean') game.tutorial.settingsOpened = false;
+      if (typeof game.tutorial.keysSeen !== 'boolean') game.tutorial.keysSeen = false;
+      if (typeof game.tutorial.glossarySeen !== 'boolean') game.tutorial.glossarySeen = false;
       if (!Array.isArray(game.memorizedSpells)) game.memorizedSpells = [];
       if (typeof game.spellSwapCooldownEnd !== 'number') game.spellSwapCooldownEnd = 0;
       if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
@@ -3960,6 +4121,7 @@
     // -------------------- GAME LOOP --------------------
     let lastTickTime = Date.now();
     let towerPulseIndex = 0;
+    let lastActivitiesRender = 0;
     setInterval(() => {
       const now = Date.now();
       const dt = (now - lastTickTime) / 1000;
@@ -4019,6 +4181,10 @@
       if (hadCooldown && game.active.cooldown <= 0) renderSpells();
 
       renderUI();
+      if (now - lastActivitiesRender > 250) {
+        renderActivities();
+        lastActivitiesRender = now;
+      }
       checkAchievements();
 
       towerPulseIndex++;
