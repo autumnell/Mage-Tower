@@ -331,6 +331,42 @@
     .room-card:hover .tooltip { visibility: visible; opacity: 1; }
     .room-card .unlock-hint { display: block; margin-top: 6px; }
 
+    .relic-card {
+      background: var(--bg-card);
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      width: 200px;
+      text-align: left;
+      cursor: pointer;
+      position: relative;
+      border: 1px solid var(--border);
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+    .relic-card:hover:not(.disabled) { border-color: var(--accent); background: var(--bg-elevated); transform: translateY(-2px); }
+    .relic-card.disabled { opacity: 0.5; cursor: not-allowed; }
+    .relic-card .relic-tier {
+      font-size: 0.7em;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.7;
+      margin-bottom: 6px;
+    }
+    .relic-card .relic-title { font-weight: 700; margin-bottom: 6px; }
+    .relic-card .relic-desc { font-size: 0.86em; color: var(--text-muted); line-height: 1.4; }
+    .relic-card.tier-uncommon { border-color: rgba(124, 156, 244, 0.55); }
+    .relic-card.tier-rare { border-color: rgba(214, 188, 255, 0.7); box-shadow: 0 0 18px rgba(214, 188, 255, 0.12); }
+
+    #relicModal .modal-content { max-height: 92%; padding-bottom: 140px; display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+    .relic-list { display: flex; flex-direction: column; gap: 10px; }
+    .relic-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+    .relic-item .relic-name { font-weight: 700; color: var(--accent); }
+    .relic-item .relic-note { font-size: 0.86em; color: var(--text-muted); margin-top: 4px; }
+
     #toastContainer {
       position: fixed;
       bottom: 72px;
@@ -811,7 +847,7 @@
       </div>
       <div id="focusBlock" class="resource-block focus-block">
         <span class="main focus">Focus: <span id="focus">0</span> / <span id="focusMax">100</span></span>
-        <span class="sub">Focus/sec: <span id="focusPerSec">0</span> (after 60s idle)</span>
+        <span class="sub">Focus/sec: <span id="focusPerSec">0</span> <span id="focusIdleHint">(after 60s idle)</span></span>
         <div class="mini-progress focus" aria-hidden="true"><div id="focusFill" class="mini-fill"></div></div>
       </div>
     </div>
@@ -847,6 +883,11 @@
     <button class="tab" data-panel="towerModal">
       <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="9" y="12" width="6" height="6"/><rect x="7" y="6" width="10" height="6"/><rect x="10" y="2" width="4" height="4"/></svg>
       <span>Tower</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button class="tab" data-panel="relicsModal">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7-9 13-9-13z"/><path d="M3 9h18"/></svg>
+      <span>Relics</span>
       <span class="tab-badge" aria-hidden="true"></span>
     </button>
     <button id="ascensionTab" class="tab tab-locked" data-panel="ascensionModal" title="Unlocks at 50 floors">
@@ -906,6 +947,21 @@
     </div>
   </div>
 
+  <div id="relicsModal" class="panel-modal">
+    <div class="panel-content">
+      <div class="panel-header">
+        <h2>Relics</h2>
+        <button class="panel-close" aria-label="Close" onclick="closePanel('relicsModal')">&times;</button>
+      </div>
+      <p class="section-title">Run relics (reset on prestige)</p>
+      <div id="relicSummary" class="stat"></div>
+      <div id="relicDraftSection" class="section-divider" style="margin-top:16px; display:none;">
+        <p class="section-title">Relic draft available</p>
+        <button id="relicDraftBtn">Choose a relic</button>
+      </div>
+    </div>
+  </div>
+
   <div id="ascensionModal" class="panel-modal">
     <div class="panel-content">
       <div class="panel-header">
@@ -925,6 +981,10 @@
 
   <div id="roomModal" class="modal">
     <div class="modal-content" id="roomChoices"></div>
+  </div>
+
+  <div id="relicModal" class="modal">
+    <div class="modal-content" id="relicChoices"></div>
   </div>
 
   <div id="settingsModal" class="modal">
@@ -986,6 +1046,7 @@
             <div class="kb-row"><span class="kb-key">2</span><span class="kb-desc">Toggle Grimoire</span></div>
             <div class="kb-row"><span class="kb-key">3</span><span class="kb-desc">Toggle Tower</span></div>
             <div class="kb-row"><span class="kb-key">4</span><span class="kb-desc">Toggle Ascension (when unlocked)</span></div>
+            <div class="kb-row"><span class="kb-key">5</span><span class="kb-desc">Toggle Relics</span></div>
             <div class="kb-row"><span class="kb-key">M</span><span class="kb-desc">Buy Mana Font (Tower)</span></div>
             <div class="kb-row"><span class="kb-key">S</span><span class="kb-desc">Open/close Settings</span></div>
             <div class="kb-row"><span class="kb-key">?</span><span class="kb-desc">Open “How to play”</span></div>
@@ -1023,6 +1084,7 @@
           <li>Open the <strong>Tower</strong> tab to add new floors (each floor lets you build one room). Rooms boost mana, stamina, or spell power.</li>
           <li>Unlock and cast spells from the <strong>Grimoire</strong> (Time Dilation, Leyline Manipulation, etc.) to multiply gains.</li>
           <li>Click a built room in the tower view to see its description and upgrade it.</li>
+          <li>Reach relic milestones (and Relic Hunts) to draft run-based relics that reshape your build.</li>
         </ul>
       </div>
       <button id="introCloseBtn">Got it</button>
@@ -1111,6 +1173,10 @@
     const FOCUS_IDLE_SEC = 60;
     const FOCUS_OFFLINE_DIVISOR = 8;
     const OFFLINE_FOCUS_RATE = 0.25;
+    const SIGIL_STACK_PCT = 0.02;
+    const SIGIL_STACK_CAP = 12;
+    const RELIC_MILESTONES = [6, 16, 30, 50, 75, 100, 140, 180];
+    const RELIC_HUNT_COOLDOWN_MS = 25 * 60 * 1000;
 
     let game;
 
@@ -1276,7 +1342,33 @@
       'Tome Vault': { unlock: () => true, unlockFloors: 0, desc: '+0.35% spell effect per level.', buildableOnce: true, spellPct: 0.0035 },
       'Cauldron Nook': { unlock: () => true, unlockFloors: 0, desc: '+0.3% mana/sec per level.', buildableOnce: true, manaPct: 0.003 },
       'Pilgrim Rest': { unlock: () => true, unlockFloors: 0, desc: '+0.25% stamina regen per level.', buildableOnce: true, staminaPct: 0.0025 },
+      'Apprentice Quarters': { unlock: () => totalFloors() >= 5, unlockFloors: 5, desc: '+5% max mana per level.', buildableOnce: true, manaCapPct: 0.05 },
+      'Focus Alcove': { unlock: () => totalFloors() >= 12, unlockFloors: 12, desc: 'Focus regen starts 5% sooner and +2% focus regen per level.', buildableOnce: true, focusIdlePct: -0.05, focusPct: 0.02 },
+      'Aether Loom': { unlock: () => totalFloors() >= 30, unlockFloors: 30, desc: '+4% Mana Font output per level.', buildableOnce: true, fontPct: 0.04 },
+      'Sigil Vault': { unlock: () => totalFloors() >= 45, unlockFloors: 45, desc: 'Room upgrades cost 5% less per level.', buildableOnce: true, upgradeCostPct: -0.05 },
+      'Curio Gallery': { unlock: () => totalFloors() >= 70, unlockFloors: 70, desc: '+1% mana/sec per relic per level.', buildableOnce: true, relicManaPct: 0.01 },
+      'Planar Gate': { unlock: () => totalFloors() >= 90, unlockFloors: 90, desc: '+4% active spell and ritual duration per level.', buildableOnce: true, activeDurationPct: 0.04 },
     };
+    const RELICS = [
+      { id: 'glimmerstone', name: 'Glimmerstone', tier: 'common', desc: '+8% mana/sec.', mods: { manaMult: 0.08 } },
+      { id: 'scribeCharm', name: 'Scribe Charm', tier: 'common', desc: '+30% click mana.', mods: { clickMult: 0.30 } },
+      { id: 'glyphThread', name: 'Glyph Thread', tier: 'common', desc: '+10% Mana Font output.', mods: { fontRateMult: 0.10 } },
+      { id: 'fadedTalisman', name: 'Faded Talisman', tier: 'common', desc: '+12% stamina regen.', mods: { staminaRegenMult: 0.12 } },
+      { id: 'quietHourglass', name: 'Quiet Hourglass', tier: 'common', desc: 'Focus regen starts 15% sooner.', mods: { focusIdleMult: -0.15 } },
+      { id: 'sapphirePrism', name: 'Sapphire Prism', tier: 'uncommon', desc: '+12% spell effect.', mods: { spellEffectMult: 0.12 } },
+      { id: 'ironSigil', name: 'Iron Sigil', tier: 'uncommon', desc: '+25 max stamina.', mods: { maxStaminaBonus: 25 } },
+      { id: 'lucentCandle', name: 'Lucent Candle', tier: 'uncommon', desc: '+15% focus regen.', mods: { focusRegenMult: 0.15 } },
+      { id: 'mindstone', name: 'Mindstone', tier: 'uncommon', desc: '+20 max focus.', mods: { maxFocusBonus: 20 } },
+      { id: 'glassEngine', name: 'Glass Engine', tier: 'uncommon', desc: '+15% mana/sec, -8% stamina regen.', mods: { manaMult: 0.15, staminaRegenMult: -0.08 } },
+      { id: 'etchingTools', name: 'Etching Tools', tier: 'uncommon', desc: 'Room upgrades cost 8% less.', mods: { upgradeCostMult: -0.08 } },
+      { id: 'eclipseSeal', name: 'Eclipse Seal', tier: 'rare', desc: '+25% mana/sec, floor costs +12%.', mods: { manaMult: 0.25, floorCostMult: 0.12 } },
+      { id: 'goldenLoop', name: 'Golden Loop', tier: 'rare', desc: '+15% active spell duration and +10% max mana.', mods: { activeDurationMult: 0.15, maxManaMult: 0.10 } },
+      { id: 'voidCompass', name: 'Void Compass', tier: 'rare', desc: '+20% spell effect, -10% mana/sec.', mods: { spellEffectMult: 0.20, manaMult: -0.10 } },
+    ];
+    const RELIC_BY_ID = RELICS.reduce((acc, relic) => {
+      acc[relic.id] = relic;
+      return acc;
+    }, {});
     const SPECIAL_ROOM_NAMES = Object.keys(ROOMS).filter(n => ROOMS[n].buildableOnce);
     const ORIGINAL_SPECIAL = ['Vault', 'Library', 'Observatory'];
     const RANDOM_FLOOR_ROOMS = SPECIAL_ROOM_NAMES.filter(n => !ORIGINAL_SPECIAL.includes(n));
@@ -1292,13 +1384,15 @@
       manaFonts: 0,
       specialRooms: initialSpecialRooms(),
       stairs: 0,
-      passive: { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0 },
+      passive: { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 },
       active: { boost: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, boostTD: 1, boostHarvest: 1, leylineTapTimer: 0, leylineTapPct: 0 },
       studyCount: 0,
       stats: {
         timeDilationCasts: 0,
         arcaneHarvestCasts: 0,
         leylineSurgeCasts: 0,
+        focusSurgeCasts: 0,
+        vigorInfusionCasts: 0,
         totalManaEarned: 0,
         totalSpellsCast: 0,
         timePlayedMs: 0,
@@ -1329,12 +1423,17 @@
       attuneDiscount: 0,
       ritualActivityCooldownEnd: 0,
       spellEchoNextFreeAt: 0,
+      relics: [],
+      relicDraft: [],
+      relicDraftSeen: false,
+      sigilStacks: 0,
+      relicHuntCooldownEnd: 0,
       floorsKept: 0,
       nextFloorDuplicate: null,
       nextFloorCursed: false,
       nextFloorBonus: false,
       paragonXp: 0,
-      paragonSpent: { manaPct: 0, spellEffect: 0, stamina: 0 },
+      paragonSpent: { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 },
       lastActivityOrSpellAt: 0,
       exhaustedUntil: 0,
       tutorial: { clicked: false, done: false, completedToast: false },
@@ -1351,6 +1450,7 @@
     const focusEl = document.getElementById('focus');
     const focusMaxEl = document.getElementById('focusMax');
     const focusPerSecEl = document.getElementById('focusPerSec');
+    const focusIdleHint = document.getElementById('focusIdleHint');
     const exhaustedHint = document.getElementById('exhaustedHint');
     const floors = document.getElementById('floors');
     const roomSummary = document.getElementById('roomSummary');
@@ -1368,6 +1468,11 @@
     const towerContainer = document.getElementById('towerContainer');
     const roomModal = document.getElementById('roomModal');
     const roomChoices = document.getElementById('roomChoices');
+    const relicModal = document.getElementById('relicModal');
+    const relicChoices = document.getElementById('relicChoices');
+    const relicSummary = document.getElementById('relicSummary');
+    const relicDraftSection = document.getElementById('relicDraftSection');
+    const relicDraftBtn = document.getElementById('relicDraftBtn');
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsModal = document.getElementById('settingsModal');
     const prestigeBtn = document.getElementById('prestigeBtn');
@@ -1478,7 +1583,10 @@
       return lvl * 0.10;
     }
 
-    const floorCost = () => 50 * (totalFloors() + 1);
+    const floorCost = () => {
+      const relicMult = 1 + (relicModifiers().floorCostMult || 0);
+      return 50 * (totalFloors() + 1) * Math.max(0.2, relicMult);
+    };
     function effectiveFloorCost() {
       let c = floorCost();
       if (game.nextFloorBonus) c = 0;
@@ -1492,6 +1600,68 @@
       const r = sr[name];
       if (!r || !r.built) return 0;
       return r.level || 1;
+    }
+    function roomEffectSum(key) {
+      let total = 0;
+      SPECIAL_ROOM_NAMES.forEach(name => {
+        const info = ROOMS[name];
+        if (!info || !info[key]) return;
+        const lvl = countRooms(name);
+        if (lvl > 0) total += lvl * info[key];
+      });
+      return total;
+    }
+    function relicModifiers() {
+      const mods = {
+        manaMult: 0,
+        staminaRegenMult: 0,
+        focusRegenMult: 0,
+        focusIdleMult: 0,
+        clickMult: 0,
+        maxManaMult: 0,
+        maxStaminaBonus: 0,
+        maxFocusBonus: 0,
+        fontRateMult: 0,
+        spellEffectMult: 0,
+        activeDurationMult: 0,
+        floorCostMult: 0,
+        upgradeCostMult: 0,
+      };
+      const list = game.relics || [];
+      list.forEach(id => {
+        const relic = RELIC_BY_ID[id];
+        if (!relic || !relic.mods) return;
+        Object.keys(relic.mods).forEach(key => {
+          mods[key] = (mods[key] || 0) + relic.mods[key];
+        });
+      });
+      return mods;
+    }
+    function relicMilestonesReached() {
+      const floors = totalFloors();
+      return RELIC_MILESTONES.filter(m => floors >= m).length;
+    }
+    function nextRelicMilestone() {
+      const floors = totalFloors();
+      return RELIC_MILESTONES.find(m => floors < m) || null;
+    }
+    function activeDurationMultiplier() {
+      const roomBonus = roomEffectSum('activeDurationPct');
+      const ritualBonus = (game.passive.ritualMastery || 0) * 0.05;
+      const relicBonus = relicModifiers().activeDurationMult || 0;
+      return 1 + roomBonus + ritualBonus + relicBonus;
+    }
+    function focusIdleMultiplier() {
+      const roomBonus = roomEffectSum('focusIdlePct');
+      const passiveBonus = (game.passive.focusFlow || 0) * -0.03;
+      const relicBonus = relicModifiers().focusIdleMult || 0;
+      return Math.max(0.35, 1 + roomBonus + passiveBonus + relicBonus);
+    }
+    function focusRegenMultiplier() {
+      const roomBonus = roomEffectSum('focusPct');
+      const passiveBonus = (game.passive.focusFlow || 0) * 0.05;
+      const relicBonus = relicModifiers().focusRegenMult || 0;
+      return 1 + roomBonus + passiveBonus + relicBonus;
     }
     function maxSpellSlots() {
       let slots = 1;
@@ -1550,7 +1720,11 @@
     function upgradeCost(roomName) {
       const r = (game.specialRooms || {})[roomName];
       const level = (r && r.built && r.level) ? r.level : 1;
-      return UPGRADE_COST_BASE * Math.pow(1.5, level - 1);
+      const base = UPGRADE_COST_BASE * Math.pow(1.5, level - 1);
+      const roomDiscount = roomEffectSum('upgradeCostPct');
+      const relicDiscount = relicModifiers().upgradeCostMult || 0;
+      const mult = Math.max(0.2, 1 + roomDiscount + relicDiscount);
+      return base * mult;
     }
 
     function spellEffectMultiplier() {
@@ -1565,6 +1739,7 @@
         mult *= (1 + lvl * info.spellPct);
       });
       mult *= (1 + (game.transcribeBonusPct || 0) / 100);
+      mult *= (1 + (relicModifiers().spellEffectMult || 0));
       mult *= paragonSpellEffectMultiplier();
       return mult;
     }
@@ -1592,7 +1767,11 @@
     }
 
     function maxMana() {
-      return BASE_MANA_MAX * Math.pow(1.07, game.studyCount || 0);
+      const base = BASE_MANA_MAX * Math.pow(1.07, game.studyCount || 0);
+      const roomBonus = 1 + roomEffectSum('manaCapPct');
+      const passiveBonus = 1 + (game.passive.manaReservoir || 0) * 0.04;
+      const relicBonus = 1 + (relicModifiers().maxManaMult || 0);
+      return base * roomBonus * passiveBonus * relicBonus;
     }
 
     function capMana() {
@@ -1603,7 +1782,8 @@
     function maxStamina() {
       const well = (game.passive.staminaWell || 0) * 5;
       const paragon = (game.paragonSpent && game.paragonSpent.stamina) ? game.paragonSpent.stamina * 5 : 0;
-      return BASE_STAMINA_MAX + well + paragon;
+      const relicBonus = relicModifiers().maxStaminaBonus || 0;
+      return BASE_STAMINA_MAX + well + paragon + relicBonus;
     }
 
     function staminaRoomBonusMult() {
@@ -1637,11 +1817,14 @@
       if (game.ritualBuffEnd && game.ritualBuffEnd > Date.now()) sps *= 2;
       sps *= towerStrainStaminaMult();
       if ((game.exhaustedUntil || 0) > Date.now()) sps *= 0.5;
+      sps *= (1 + (relicModifiers().staminaRegenMult || 0));
       return Math.min(sps, STAMINA_REGEN_CAP);
     }
 
     function maxFocus() {
-      return BASE_FOCUS_MAX;
+      const paragon = (game.paragonSpent && game.paragonSpent.focus) ? game.paragonSpent.focus * 5 : 0;
+      const relicBonus = relicModifiers().maxFocusBonus || 0;
+      return BASE_FOCUS_MAX + paragon + relicBonus;
     }
 
     function focusIdleSeconds() {
@@ -1649,12 +1832,12 @@
     }
 
     function isRestingForFocus() {
-      return focusIdleSeconds() >= FOCUS_IDLE_SEC;
+      return focusIdleSeconds() >= FOCUS_IDLE_SEC * focusIdleMultiplier();
     }
 
     function focusPerSecond() {
       if (!isRestingForFocus()) return 0;
-      return FOCUS_REGEN_BASE;
+      return FOCUS_REGEN_BASE * focusRegenMultiplier();
     }
 
     function trySpendFocus(amount) {
@@ -1693,7 +1876,10 @@
 
     function manaPerSecond() {
       const floors = totalFloors();
-      let m = (game.manaFonts * MANA_FONT_RATE) * (1 + floors * FLOOR_BONUS);
+      const sigilStacks = Math.min(game.sigilStacks || 0, SIGIL_STACK_CAP);
+      const sigilMult = 1 + sigilStacks * SIGIL_STACK_PCT;
+      const fontRate = MANA_FONT_RATE * sigilMult * (1 + roomEffectSum('fontPct')) * (1 + (relicModifiers().fontRateMult || 0));
+      let m = (game.manaFonts * fontRate) * (1 + floors * FLOOR_BONUS);
       const vaultLevel = countRooms('Vault');
       m *= Math.min(1 + vaultLevel * 0.05, 1 + VAULT_CAP);
       m *= (1 + (game.stairs || 0) * STAIRS_MANA_PCT);
@@ -1704,6 +1890,8 @@
         const lvl = countRooms(name);
         m *= (1 + lvl * info.manaPct);
       });
+      const relicRoomPct = roomEffectSum('relicManaPct') * (game.relics || []).length;
+      if (relicRoomPct > 0) m *= (1 + relicRoomPct);
       m *= astralManaMultiplier();
       m *= conduitMasteryMultiplier();
       m *= towerBondMultiplier();
@@ -1720,6 +1908,7 @@
       m *= achievementManaMultiplier();
       m *= milestoneManaMultiplier();
       m *= paragonManaMultiplier();
+      m *= (1 + (relicModifiers().manaMult || 0));
       return m;
     }
 
@@ -1744,6 +1933,12 @@
       { id: 'rooms_10', name: 'Diverse', desc: 'Build 10 different room types', check: g => { const sr = g.specialRooms || {}; return SPECIAL_ROOM_NAMES.filter(n => sr[n] && sr[n].built).length >= 10; }, reward: '+1% mana/sec' },
       { id: 'upgrade_5', name: 'Investor', desc: 'Upgrade 5 rooms to level 2+', check: g => { const sr = g.specialRooms || {}; return SPECIAL_ROOM_NAMES.filter(n => sr[n] && sr[n].built && (sr[n].level || 1) >= 2).length >= 5; }, reward: null },
       { id: 'trial_no_arcanum_50', name: 'Pure Tower', desc: 'Reach 50 floors without building Arcanum', check: g => totalFloorsFromGame(g) >= 50 && !(g.specialRooms && g.specialRooms.Arcanum && g.specialRooms.Arcanum.built), reward: '+2% mana/sec' },
+      { id: 'relic_1', name: 'Curiosity', desc: 'Claim 1 relic', check: g => (g.relics || []).length >= 1, reward: '+1% mana/sec' },
+      { id: 'relic_4', name: 'Collector', desc: 'Claim 4 relics in a run', check: g => (g.relics || []).length >= 4, reward: '+2% mana/sec' },
+      { id: 'relic_7', name: 'Vaulted', desc: 'Claim 7 relics in a run', check: g => (g.relics || []).length >= 7, reward: '+2% mana/sec' },
+      { id: 'sigil_5', name: 'Rune Smith', desc: 'Forge 5 Sigils', check: g => (g.sigilStacks || 0) >= 5, reward: '+1% mana/sec' },
+      { id: 'focus_surge_10', name: 'Mind Lance', desc: 'Cast Focus Surge 10 times', check: g => (g.stats && g.stats.focusSurgeCasts) >= 10, reward: '+1% mana/sec' },
+      { id: 'first_300', name: 'Skyreach', desc: 'Reach 300 floors', check: g => totalFloorsFromGame(g) >= 300, reward: '+2% mana/sec' },
     ];
 
     function achievementManaMultiplier() {
@@ -1802,7 +1997,9 @@
       const fonts = game.manaFonts || 0;
       const base = 1 + Math.floor(f / 10) + Math.floor(fonts / 20);
       const crit = Math.random() < 0.05;
-      return { amount: crit ? base * 5 : base, crit };
+      const relicMult = 1 + (relicModifiers().clickMult || 0);
+      const amount = (crit ? base * 5 : base) * relicMult;
+      return { amount, crit };
     }
     function centerClick(e) {
       if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
@@ -1866,8 +2063,9 @@
           game.stats.timeDilationCasts = casts + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
           const mult = spellEffectMultiplier();
+          const durMult = activeDurationMultiplier();
           game.active.boostTD = 3 * mult;
-          game.active.duration = 10 * mult;
+          game.active.duration = 10 * mult * durMult;
           game.active.timer = game.active.duration;
           game.active.cooldown = game.active.duration * 1.1;
           playSound('spell');
@@ -1890,12 +2088,32 @@
           game.stats.arcaneHarvestCasts = (game.stats.arcaneHarvestCasts || 0) + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
           const mult = spellEffectMultiplier();
+          const durMult = activeDurationMultiplier();
           game.active.boostHarvest = 2 * mult;
-          game.active.harvestTimer = 5 * mult;
-          game.active.harvestDuration = 5 * mult;
+          game.active.harvestTimer = 5 * mult * durMult;
+          game.active.harvestDuration = 5 * mult * durMult;
           playSound('spell');
         },
         costText: () => 'Cost ' + formatNum(200 * Math.pow(1.4, game.stats.arcaneHarvestCasts || 0)) + ' mana, 20 focus',
+      },
+      {
+        id: 'focusSurge',
+        name: 'Focus Surge',
+        unlock: 12,
+        desc: 'Restore 35 focus (scaled by spell effect).',
+        effect: () => {
+          const casts = game.stats.focusSurgeCasts || 0;
+          const cost = 250 * Math.pow(1.35, casts);
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          game.stats.focusSurgeCasts = casts + 1;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          const mult = spellEffectMultiplier();
+          const gain = 35 * mult;
+          game.focus = Math.min((game.focus || 0) + gain, maxFocus());
+          playSound('spell');
+        },
+        costText: () => 'Cost ' + formatNum(250 * Math.pow(1.35, game.stats.focusSurgeCasts || 0)) + ' mana',
       },
       {
         id: 'leylineSurge',
@@ -1914,8 +2132,9 @@
           game.stats.leylineSurgeCasts = (game.stats.leylineSurgeCasts || 0) + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
           const mult = spellEffectMultiplier();
+          const durMult = activeDurationMultiplier();
           game.active.leylineTapPct = LEYLINE_TAP_PCT * mult;
-          game.active.leylineTapTimer = LEYLINE_TAP_DURATION * mult;
+          game.active.leylineTapTimer = LEYLINE_TAP_DURATION * mult * durMult;
           playSound('spell');
         },
         costText: () => 'Cost ' + formatNum(400 * Math.pow(1.5, game.stats.leylineSurgeCasts || 0)) + ' mana, 25 focus',
@@ -1956,6 +2175,29 @@
         },
         costText: () => 'Cost ' + formatNum(800) + ' mana, 30 focus',
       },
+      {
+        id: 'vigorInfusion',
+        name: 'Vigor Infusion',
+        unlock: 65,
+        focusCost: 20,
+        desc: 'Restore 25% stamina and 15 focus (scaled by spell effect).',
+        effect: () => {
+          if (!trySpendFocus(20)) return;
+          const casts = game.stats.vigorInfusionCasts || 0;
+          const cost = 1200 * Math.pow(1.45, casts);
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          game.stats.vigorInfusionCasts = casts + 1;
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          const mult = spellEffectMultiplier();
+          const staminaGain = maxStamina() * 0.25 * mult;
+          const focusGain = 15 * mult;
+          game.stamina = Math.min(game.stamina + staminaGain, maxStamina());
+          game.focus = Math.min((game.focus || 0) + focusGain, maxFocus());
+          playSound('spell');
+        },
+        costText: () => 'Cost ' + formatNum(1200 * Math.pow(1.45, game.stats.vigorInfusionCasts || 0)) + ' mana, 20 focus',
+      },
     ];
 
     const PASSIVE_SPELLS = [
@@ -1984,6 +2226,14 @@
         effect: () => game.passive.conduit++,
       },
       {
+        key: 'focusFlow',
+        name: 'Focus Flow',
+        unlock: 12,
+        desc: '-3% focus idle time and +5% focus regen per level',
+        cost: () => 260 * Math.pow(1.55, game.passive.focusFlow),
+        effect: () => game.passive.focusFlow++,
+      },
+      {
         key: 'towerBond',
         name: 'Tower Bond',
         unlock: 35,
@@ -2000,12 +2250,28 @@
         effect: () => game.passive.staminaWell++,
       },
       {
+        key: 'manaReservoir',
+        name: 'Mana Reservoir',
+        unlock: 55,
+        desc: '+4% max mana per level',
+        cost: () => 2500 * Math.pow(1.7, game.passive.manaReservoir),
+        effect: () => game.passive.manaReservoir++,
+      },
+      {
         key: 'spellEcho',
         name: 'Spell Echo',
         unlock: 45,
         desc: 'Once per 15 min, next spell cast is free (no mana cost).',
         cost: () => 5000 * Math.pow(2, game.passive.spellEcho),
         effect: () => game.passive.spellEcho++,
+      },
+      {
+        key: 'ritualMastery',
+        name: 'Ritual Mastery',
+        unlock: 70,
+        desc: '+5% active spell and ritual duration per level',
+        cost: () => 6500 * Math.pow(1.85, game.passive.ritualMastery),
+        effect: () => game.passive.ritualMastery++,
       },
     ];
 
@@ -2029,6 +2295,27 @@
           playSound('spell');
         },
         costText: () => 'Cost 33% max stamina, 10 focus',
+      },
+      {
+        id: 'channel',
+        name: 'Channel',
+        desc: 'Instant mana: 1.5× your current mana/sec.',
+        unlockFloors: 4,
+        costStaminaPct: 0.20,
+        focusCost: 5,
+        effect: () => {
+          if (!trySpendFocus(5)) return;
+          const cost = maxStamina() * 0.20;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          const gain = manaPerSecond() * 1.5;
+          game.mana = Math.min(game.mana + gain, maxMana());
+          game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
+          playSound('spell');
+        },
+        costText: () => 'Cost 20% max stamina, 5 focus',
       },
       {
         id: 'meditate',
@@ -2110,6 +2397,28 @@
         costText: () => 'Cost 40% max stamina, 15 focus',
       },
       {
+        id: 'forgeSigil',
+        name: 'Forge Sigil',
+        desc: 'Add a Sigil stack: +2% Mana Font output (max ' + SIGIL_STACK_CAP + ').',
+        unlockFloors: 22,
+        costStaminaPct: 0.35,
+        focusCost: 10,
+        disabled: () => (game.sigilStacks || 0) >= SIGIL_STACK_CAP,
+        effect: () => {
+          if (!trySpendFocus(10)) return;
+          if ((game.sigilStacks || 0) >= SIGIL_STACK_CAP) return;
+          const cost = maxStamina() * 0.35;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          setExhausted();
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          game.sigilStacks = Math.min((game.sigilStacks || 0) + 1, SIGIL_STACK_CAP);
+          playSound('spell');
+        },
+        costText: () => 'Cost 35% max stamina, 10 focus · Sigils ' + (game.sigilStacks || 0) + '/' + SIGIL_STACK_CAP,
+      },
+      {
         id: 'ritual',
         name: 'Ritual',
         desc: '2× all gains for 60s. 30 min cooldown.',
@@ -2117,6 +2426,7 @@
         costStaminaPct: 0.80,
         focusCost: 25,
         cooldownMs: RITUAL_ACTIVITY_COOLDOWN_MS,
+        cooldownKey: 'ritualActivityCooldownEnd',
         effect: () => {
           if (!trySpendFocus(25)) return;
           const cost = maxStamina() * 0.80;
@@ -2126,12 +2436,48 @@
           recordActivityOrSpell();
           setExhausted();
           game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          game.ritualBuffEnd = Date.now() + 60 * 1000;
+          game.ritualBuffEnd = Date.now() + 60 * 1000 * activeDurationMultiplier();
           game.ritualActivityCooldownEnd = Date.now() + RITUAL_ACTIVITY_COOLDOWN_MS;
           playSound('spell');
           showToast('Ritual', '2× all gains for 60s.');
         },
         costText: () => 'Cost 80% max stamina, 25 focus',
+      },
+      {
+        id: 'relicHunt',
+        name: 'Relic Hunt',
+        desc: 'Scout for a relic draft outside milestones. 25 min cooldown.',
+        unlockFloors: 45,
+        costStaminaPct: 0.50,
+        focusCost: 15,
+        cooldownMs: RELIC_HUNT_COOLDOWN_MS,
+        cooldownKey: 'relicHuntCooldownEnd',
+        disabled: () => (Array.isArray(game.relicDraft) && game.relicDraft.length > 0) || availableRelics().length === 0,
+        effect: () => {
+          if (!trySpendFocus(15)) return;
+          const cost = maxStamina() * 0.50;
+          if (game.stamina < cost) return;
+          if ((game.relicHuntCooldownEnd || 0) > Date.now()) return;
+          if (Array.isArray(game.relicDraft) && game.relicDraft.length > 0) {
+            showToast('Relic Hunt', 'You already have a relic draft waiting.');
+            return;
+          }
+          const choices = pickRelicChoices(3);
+          if (choices.length === 0) {
+            showToast('Relic Hunt', 'No relics remain this run.');
+            return;
+          }
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          setExhausted();
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          game.relicDraft = choices.map(r => r.id);
+          game.relicDraftSeen = false;
+          game.relicHuntCooldownEnd = Date.now() + RELIC_HUNT_COOLDOWN_MS;
+          playSound('spell');
+          openRelicDraft();
+        },
+        costText: () => 'Cost 50% max stamina, 15 focus',
       },
       {
         id: 'attune',
@@ -2152,8 +2498,89 @@
       },
     ];
 
+    // -------------------- RELICS --------------------
+    function availableRelics() {
+      const owned = new Set(game.relics || []);
+      return RELICS.filter(r => !owned.has(r.id));
+    }
+    function pickRelicChoices(count) {
+      const pool = availableRelics();
+      if (pool.length === 0) return [];
+      const choices = [];
+      const bag = pool.slice();
+      while (bag.length > 0 && choices.length < count) {
+        const idx = Math.floor(Math.random() * bag.length);
+        choices.push(bag.splice(idx, 1)[0]);
+      }
+      return choices;
+    }
+    function ensureRelicDraft() {
+      if (Array.isArray(game.relicDraft) && game.relicDraft.length > 0) return;
+      const reached = relicMilestonesReached();
+      const owned = (game.relics || []).length;
+      if (reached <= owned) return;
+      const choices = pickRelicChoices(3);
+      if (choices.length === 0) return;
+      game.relicDraft = choices.map(r => r.id);
+      game.relicDraftSeen = false;
+    }
+    function selectRelic(relicId) {
+      if (!relicId) return;
+      if (!Array.isArray(game.relics)) game.relics = [];
+      if (!game.relics.includes(relicId)) game.relics.push(relicId);
+      game.relicDraft = [];
+      game.relicDraftSeen = false;
+      if (relicModal) relicModal.style.display = 'none';
+      const relic = RELIC_BY_ID[relicId];
+      if (relic) showToast('Relic claimed', relic.name + ' · ' + relic.desc);
+      playSound('milestone');
+      renderAll();
+    }
+    function openRelicDraft() {
+      if (!relicModal || !relicChoices) return;
+      if (!Array.isArray(game.relicDraft) || game.relicDraft.length === 0) return;
+      relicChoices.innerHTML = '';
+      game.relicDraftSeen = true;
+      game.relicDraft.forEach(id => {
+        const relic = RELIC_BY_ID[id];
+        if (!relic) return;
+        const card = document.createElement('div');
+        card.className = 'relic-card tier-' + relic.tier;
+        card.innerHTML =
+          '<div class="relic-tier">' + relic.tier + '</div>' +
+          '<div class="relic-title">' + relic.name + '</div>' +
+          '<div class="relic-desc">' + relic.desc + '</div>';
+        card.onclick = () => selectRelic(id);
+        relicChoices.appendChild(card);
+      });
+      relicModal.style.display = 'flex';
+    }
+    function renderRelicsPanel() {
+      if (!relicSummary) return;
+      ensureRelicDraft();
+      const relics = game.relics || [];
+      const next = nextRelicMilestone();
+      let html = '<div><strong>Relics</strong></div>';
+      html += '<div class="cost">Collected: ' + relics.length + ' / ' + RELIC_MILESTONES.length + '</div>';
+      html += next ? '<div class="cost">Next relic at ' + next + ' floors.</div>' : '<div class="cost">All relic milestones reached.</div>';
+      if (relics.length === 0) {
+        html += '<div class="cost">No relics yet.</div>';
+      } else {
+        html += '<div class="relic-list">' + relics.map(id => {
+          const relic = RELIC_BY_ID[id];
+          if (!relic) return '';
+          return '<div class="relic-item"><div class="relic-name">' + relic.name + '</div><div class="relic-note">' + relic.desc + '</div></div>';
+        }).join('') + '</div>';
+      }
+      relicSummary.innerHTML = html;
+      const hasDraft = Array.isArray(game.relicDraft) && game.relicDraft.length > 0;
+      if (relicDraftSection) relicDraftSection.style.display = hasDraft ? 'block' : 'none';
+      if (relicDraftBtn) relicDraftBtn.onclick = () => openRelicDraft();
+      if (hasDraft && !game.relicDraftSeen) openRelicDraft();
+    }
+
     // -------------------- RENDER --------------------
-    function renderAll() { renderUI(); renderSpells(); renderTower(); renderActivities(); }
+    function renderAll() { renderUI(); renderSpells(); renderTower(); renderActivities(); renderRelicsPanel(); }
 
     function renderGoalHint() {
       if (!goalHintEl) return;
@@ -2220,7 +2647,9 @@
           const focusCost = a.focusCost || 0;
           if ((game.stamina || 0) < stamCost) continue;
           if ((game.focus || 0) < focusCost) continue;
-          if (a.id === 'ritual' && (game.ritualActivityCooldownEnd || 0) > now) continue;
+          const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
+          if (a.cooldownMs && (game[cooldownKey] || 0) > now) continue;
+          if (typeof a.disabled === 'function' && a.disabled()) continue;
           canAct = true;
           break;
         }
@@ -2253,6 +2682,7 @@
 
       // Ascension: can ascend now
       setTabBadge('ascensionModal', totalFloors() >= ASCENSION_FLOOR);
+      setTabBadge('relicsModal', Array.isArray(game.relicDraft) && game.relicDraft.length > 0);
     }
 
     function renderUI() {
@@ -2265,6 +2695,10 @@
       if (focusEl) focusEl.textContent = formatNum(game.focus || 0);
       if (focusMaxEl) focusMaxEl.textContent = formatNum(maxFocus());
       if (focusPerSecEl) focusPerSecEl.textContent = formatRate(focusPerSecond()) + '/s';
+      if (focusIdleHint) {
+        const idleSec = Math.round(FOCUS_IDLE_SEC * focusIdleMultiplier());
+        focusIdleHint.textContent = '(after ' + idleSec + 's idle)';
+      }
       setMiniBar(manaFillEl, game.mana || 0, maxMana());
       setMiniBar(staminaFillEl, game.stamina || 0, maxStamina());
       setMiniBar(focusFillEl, game.focus || 0, maxFocus());
@@ -2286,7 +2720,10 @@
       floors.textContent = totalFloors();
       manaFontCostEl.textContent = 'Cost: ' + formatNum(manaFontCost()) + ' mana (Shift: x10, Ctrl: max)';
       const currentMps = manaPerSecond();
-      const mpsGainFromFont = MANA_FONT_RATE * (1 + totalFloors() * FLOOR_BONUS);
+      const sigilStacks = Math.min(game.sigilStacks || 0, SIGIL_STACK_CAP);
+      const sigilMult = 1 + sigilStacks * SIGIL_STACK_PCT;
+      const fontRate = MANA_FONT_RATE * sigilMult * (1 + roomEffectSum('fontPct')) * (1 + (relicModifiers().fontRateMult || 0));
+      const mpsGainFromFont = fontRate * (1 + totalFloors() * FLOOR_BONUS);
       const fontGainPct = currentMps > 0 ? ((mpsGainFromFont / currentMps) * 100).toFixed(1) : '0';
       if (manaFontPreview) manaFontPreview.textContent = '+' + formatRate(mpsGainFromFont) + '/s (+' + fontGainPct + '%)';
       const effCost = effectiveFloorCost();
@@ -2305,17 +2742,22 @@
         else {
           prestigeTokenChoices.innerHTML = '';
           const tok = game.prestigeTokens || 0;
-          const choice = game.prestigeTokenChoice;
-          const addOpt = (key, label) => {
+          let choice = game.prestigeTokenChoice;
+          if (choice === 'relic' && (game.relics || []).length === 0) {
+            game.prestigeTokenChoice = null;
+            choice = null;
+          }
+          const addOpt = (key, label, enabled = true) => {
             const btn = document.createElement('button');
             btn.className = 'spell-slot-btn';
             btn.textContent = (choice === key ? '[X] ' : '') + label + ' (1 token)';
-            btn.disabled = tok < 1;
+            btn.disabled = tok < 1 || !enabled;
             btn.onclick = () => { game.prestigeTokenChoice = game.prestigeTokenChoice === key ? null : key; renderAll(); };
             prestigeTokenChoices.appendChild(btn);
           };
           addOpt('font', 'Keep 1 Mana Font');
           addOpt('study', 'Keep 5% Study count');
+          addOpt('relic', 'Keep 1 Relic', (game.relics || []).length > 0);
         }
       }
       if (canFullPrestige) {
@@ -2359,7 +2801,7 @@
         game.floorsKept = savedFloorsKept;
         game.mana = savedMana;
         game.manaFonts = 0;
-        game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0 };
+        game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
         game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
         game.studyCount = 0;
         game.stamina = maxStamina();
@@ -2368,9 +2810,16 @@
         game.scryLockedRoom = null;
         game.ritualBuffEnd = 0;
         game.attuneDiscount = 0;
+        game.relics = [];
+        game.relicDraft = [];
+        game.relicDraftSeen = false;
+        game.sigilStacks = 0;
+        game.relicHuntCooldownEnd = 0;
         game.nextFloorDuplicate = null;
         game.nextFloorCursed = false;
         game.nextFloorBonus = false;
+        game.stats.focusSurgeCasts = 0;
+        game.stats.vigorInfusionCasts = 0;
         renderAll();
         playSound('milestone');
       };
@@ -2384,7 +2833,7 @@
         paragonXpEl.textContent = 'Paragon XP: ' + formatNum(xp);
       }
       if (showParagon && paragonNodes) {
-        const s = game.paragonSpent || { manaPct: 0, spellEffect: 0, stamina: 0 };
+        const s = game.paragonSpent || { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
         const xp = game.paragonXp || 0;
         paragonNodes.innerHTML = '';
         const addNode = (key, label, maxLvl) => {
@@ -2396,7 +2845,7 @@
             if (game.paragonXp < PARAGON_NODE_COST) return;
             if ((s[key] || 0) >= maxLvl) return;
             game.paragonXp -= PARAGON_NODE_COST;
-            if (!game.paragonSpent) game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0 };
+            if (!game.paragonSpent) game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
             game.paragonSpent[key] = (game.paragonSpent[key] || 0) + 1;
             renderAll();
           };
@@ -2405,6 +2854,7 @@
         addNode('manaPct', '+0.5% mana/sec', 20);
         addNode('spellEffect', '+1% spell effect', 15);
         addNode('stamina', '+5 max stamina', 10);
+        addNode('focus', '+5 max focus', 10);
       }
 
       const ascensionTabUnlocked = totalFloors() >= ASCENSION_TAB_UNLOCK;
@@ -2422,6 +2872,7 @@
       renderTowerUpgrades();
       renderTimeDilationStatus();
       renderGoalHint();
+      ensureRelicDraft();
       updateBadges();
     }
 
@@ -2463,7 +2914,8 @@
         const locked = unlockFloors > 0 && floors < unlockFloors;
         let detail = a.costText ? a.costText() : '';
         if (a.cooldownMs) {
-          const end = game.ritualActivityCooldownEnd || 0;
+          const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
+          const end = game[cooldownKey] || 0;
           const rem = Math.max(0, (end - Date.now()) / 1000);
           if (rem > 0) {
             const m = Math.floor(rem / 60);
@@ -2476,9 +2928,11 @@
         desc.innerHTML = a.desc + '<br><span class="detail">' + detail + '</span>';
         btn.appendChild(desc);
         const costAmount = a.costStaminaPct != null ? maxStamina() * a.costStaminaPct : 0;
-        const onCooldown = a.cooldownMs && (game.ritualActivityCooldownEnd || 0) > Date.now();
+        const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
+        const onCooldown = a.cooldownMs && (game[cooldownKey] || 0) > Date.now();
         const lowFocus = a.focusCost != null && focus < a.focusCost - EPS;
         const lowStamina = a.costStaminaPct != null && stamina < costAmount - EPS;
+        const customDisabled = typeof a.disabled === 'function' ? a.disabled() : false;
         btn.onclick = () => {
           if (locked) return;
           if (a.costStaminaPct != null && game.stamina < costAmount) return;
@@ -2486,7 +2940,7 @@
           a.effect();
           renderAll();
         };
-        btn.disabled = locked || lowFocus || lowStamina || onCooldown;
+        btn.disabled = locked || lowFocus || lowStamina || onCooldown || customDisabled;
         if (locked) {
           const hint = document.createElement('span');
           hint.className = 'unlock-hint';
@@ -2725,9 +3179,12 @@
       const choice = game.prestigeTokenChoice;
       const keepManaFont = fullPrestige && choice === 'font' && game.prestigeTokens >= 1;
       const keepStudyPct = fullPrestige && choice === 'study' && game.prestigeTokens >= 1;
+      const keepRelic = fullPrestige && choice === 'relic' && game.prestigeTokens >= 1 && (game.relics || []).length > 0;
       if (keepManaFont) game.prestigeTokens--;
       if (keepStudyPct) game.prestigeTokens--;
+      if (keepRelic) game.prestigeTokens--;
       const studyKept = keepStudyPct ? Math.floor((game.studyCount || 0) * 0.05) : 0;
+      const relicKept = keepRelic ? [game.relics[0]] : [];
       game.prestige = soft ? game.prestige : game.prestige + 1;
       game.softPrestige = soft ? game.softPrestige + 1 : game.softPrestige;
       game.mana = savedMana;
@@ -2736,7 +3193,7 @@
       game.memorizedSpells = (game.memorizedSpells || []).slice(0, maxSpellSlots());
       game.stairs = 0;
       game.floorsKept = savedFloorsKept;
-      game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0 };
+      game.passive = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
       game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
       game.studyCount = studyKept;
       game.stamina = maxStamina();
@@ -2746,11 +3203,18 @@
       game.scryLockedRoom = null;
       game.ritualBuffEnd = 0;
       game.attuneDiscount = 0;
+      game.relics = relicKept;
+      game.relicDraft = [];
+      game.relicDraftSeen = false;
+      game.sigilStacks = 0;
+      game.relicHuntCooldownEnd = 0;
       game.nextFloorDuplicate = null;
       game.nextFloorCursed = false;
       game.nextFloorBonus = false;
       game.stats.timeDilationCasts = 0;
       game.stats.arcaneHarvestCasts = 0;
+      game.stats.focusSurgeCasts = 0;
+      game.stats.vigorInfusionCasts = 0;
       renderAll();
       playSound('milestone');
     }
@@ -2844,7 +3308,13 @@
         && !(totalFloors() >= 20 && name === 'Arcanum')
         && !(totalFloors() >= 30 && name === 'Hall of Preservation')
         && !(totalFloors() >= 40 && name === 'Chronurgy Chamber')
-        && !(totalFloors() >= 50 && name === 'Leyline Nexus'));
+        && !(totalFloors() >= 50 && name === 'Leyline Nexus')
+        && !(totalFloors() >= 5 && name === 'Apprentice Quarters')
+        && !(totalFloors() >= 12 && name === 'Focus Alcove')
+        && !(totalFloors() >= 30 && name === 'Aether Loom')
+        && !(totalFloors() >= 45 && name === 'Sigil Vault')
+        && !(totalFloors() >= 70 && name === 'Curio Gallery')
+        && !(totalFloors() >= 90 && name === 'Planar Gate'));
       if (availableRandom.length > 0) {
         const randomName = availableRandom[Math.floor(Math.random() * availableRandom.length)];
         addCard(randomName, ROOMS[randomName]);
@@ -2857,6 +3327,12 @@
       if (totalFloors() >= 30 && (!sr['Hall of Preservation'] || !sr['Hall of Preservation'].built)) addCard('Hall of Preservation', ROOMS['Hall of Preservation']);
       if (totalFloors() >= 40 && (!sr['Chronurgy Chamber'] || !sr['Chronurgy Chamber'].built)) addCard('Chronurgy Chamber', ROOMS['Chronurgy Chamber']);
       if (totalFloors() >= 50 && (!sr['Leyline Nexus'] || !sr['Leyline Nexus'].built)) addCard('Leyline Nexus', ROOMS['Leyline Nexus']);
+      if (totalFloors() >= 5 && (!sr['Apprentice Quarters'] || !sr['Apprentice Quarters'].built)) addCard('Apprentice Quarters', ROOMS['Apprentice Quarters']);
+      if (totalFloors() >= 12 && (!sr['Focus Alcove'] || !sr['Focus Alcove'].built)) addCard('Focus Alcove', ROOMS['Focus Alcove']);
+      if (totalFloors() >= 30 && (!sr['Aether Loom'] || !sr['Aether Loom'].built)) addCard('Aether Loom', ROOMS['Aether Loom']);
+      if (totalFloors() >= 45 && (!sr['Sigil Vault'] || !sr['Sigil Vault'].built)) addCard('Sigil Vault', ROOMS['Sigil Vault']);
+      if (totalFloors() >= 70 && (!sr['Curio Gallery'] || !sr['Curio Gallery'].built)) addCard('Curio Gallery', ROOMS['Curio Gallery']);
+      if (totalFloors() >= 90 && (!sr['Planar Gate'] || !sr['Planar Gate'].built)) addCard('Planar Gate', ROOMS['Planar Gate']);
     }
 
     let currentRoomDetailName = null;
@@ -2902,6 +3378,11 @@
     roomDetailClose.onclick = closeRoomDetail;
     roomDetailModal.addEventListener('click', (e) => { if (e.target === roomDetailModal) closeRoomDetail(); });
     roomDetailModal.querySelector('.modal-content').addEventListener('click', (e) => e.stopPropagation());
+    if (relicModal) {
+      relicModal.addEventListener('click', (e) => { if (e.target === relicModal) relicModal.style.display = 'none'; });
+      const relicContent = relicModal.querySelector('.modal-content');
+      if (relicContent) relicContent.addEventListener('click', (e) => e.stopPropagation());
+    }
 
     // -------------------- BUTTONS --------------------
     manaFontBtn.onclick = (e) => {
@@ -2965,6 +3446,7 @@
       document.querySelectorAll('.panel-modal').forEach(m => m.classList.remove('show'));
       document.querySelectorAll('#bottomNav .tab').forEach(t => t.classList.remove('active'));
       if (roomModal) roomModal.style.display = 'none';
+      if (relicModal) relicModal.style.display = 'none';
       if (settingsModal) settingsModal.style.display = 'none';
       if (statsModal) statsModal.style.display = 'none';
       if (introModal) introModal.style.display = 'none';
@@ -2992,6 +3474,7 @@
         }
         togglePanelById('ascensionModal');
       }
+      else if (k === '5') togglePanelById('relicsModal');
       else if (k === 's') { if (settingsModal) settingsModal.style.display = settingsModal.style.display === 'flex' ? 'none' : 'flex'; }
       else if (k === '?' || (k === '/' && e.shiftKey)) { if (introModal) introModal.style.display = 'flex'; }
       else if (k === 'm') { manaFontBtn && manaFontBtn.click(); }
@@ -3043,6 +3526,8 @@
         '<span>Time played</span><span class="value">' + timeStr + '</span>' +
         '<span>High score: max floors</span><span class="value">' + maxFloors + '</span>' +
         '<span>High score: max mana/sec</span><span class="value">' + formatRate(maxMps) + '/s' + goalReached + '</span>' +
+        '<span>Relics (current run)</span><span class="value">' + ((game.relics || []).length) + '</span>' +
+        '<span>Sigil stacks</span><span class="value">' + (game.sigilStacks || 0) + '</span>' +
         '<span>Goal: ' + formatNum(GOAL_MANA_PER_SEC) + ' mana/sec</span><span class="value">' + (game.stats.goalManaReached ? 'Done' : '—') + '</span>' +
         '<span>Prestiges</span><span class="value">' + (game.prestige + game.softPrestige) + '</span>' +
         '<span>Ascensions</span><span class="value">' + game.ascension + '</span>';
@@ -3068,13 +3553,28 @@
       try {
         const data = JSON.parse(raw);
         Object.assign(game, data);
-        if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
-        if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0 };
+        if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
+        if (!game.passive || typeof game.passive !== 'object') game.passive = {};
+        const passiveDefaults = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
+        Object.keys(passiveDefaults).forEach(k => { if (typeof game.passive[k] !== 'number') game.passive[k] = passiveDefaults[k]; });
+        if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
         if (typeof game.active.boostTD !== 'number') game.active.boostTD = 1;
         if (typeof game.active.boostHarvest !== 'number') game.active.boostHarvest = 1;
+        if (typeof game.active.leylineTapTimer !== 'number') game.active.leylineTapTimer = 0;
+        if (typeof game.active.leylineTapPct !== 'number') game.active.leylineTapPct = 0;
         if (typeof game.studyCount !== 'number') game.studyCount = 0;
         if (typeof game.stamina !== 'number') game.stamina = 0;
         if (typeof game.focus !== 'number') game.focus = 0;
+        if (!Array.isArray(game.relics)) game.relics = [];
+        if (!Array.isArray(game.relicDraft)) game.relicDraft = [];
+        if (typeof game.relicDraftSeen !== 'boolean') game.relicDraftSeen = false;
+        if (typeof game.sigilStacks !== 'number') game.sigilStacks = 0;
+        if (typeof game.relicHuntCooldownEnd !== 'number') game.relicHuntCooldownEnd = 0;
+        game.relics = (game.relics || []).filter(id => RELIC_BY_ID[id]);
+        game.relicDraft = (game.relicDraft || []).filter(id => RELIC_BY_ID[id]);
+        if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
+        if (typeof game.paragonSpent.focus !== 'number') game.paragonSpent.focus = 0;
+        if (game.prestigeTokenChoice !== 'font' && game.prestigeTokenChoice !== 'study' && game.prestigeTokenChoice !== 'relic') game.prestigeTokenChoice = null;
         capMana();
         capStamina();
         capFocus();
@@ -3133,18 +3633,32 @@
         delete game.rooms;
         delete game.floors;
       }
-      if (!game.stats) game.stats = { timeDilationCasts: 0, arcaneHarvestCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, achievements: [] };
-      if (!game.passive) game.passive = { arcane: 0, astral: 0 };
-      if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0 };
+      const statDefaults = { timeDilationCasts: 0, arcaneHarvestCasts: 0, leylineSurgeCasts: 0, focusSurgeCasts: 0, vigorInfusionCasts: 0, totalManaEarned: 0, totalSpellsCast: 0, timePlayedMs: 0, totalFloorsEver: 0, totalStaminaSpent: 0, maxFloorsReached: 0, maxManaPerSecReached: 0 };
+      if (!game.stats) game.stats = { ...statDefaults, achievements: [] };
+      Object.keys(statDefaults).forEach(k => { if (typeof game.stats[k] !== 'number') game.stats[k] = statDefaults[k]; });
+      if (!Array.isArray(game.stats.achievements)) game.stats.achievements = [];
+      if (!game.passive || typeof game.passive !== 'object') game.passive = {};
+      const passiveDefaults = { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0 };
+      Object.keys(passiveDefaults).forEach(k => { if (typeof game.passive[k] !== 'number') game.passive[k] = passiveDefaults[k]; });
+      if (!game.active) game.active = { boost: 1, boostTD: 1, boostHarvest: 1, timer: 0, duration: 0, cooldown: 0, harvestTimer: 0, harvestDuration: 0, leylineTapTimer: 0, leylineTapPct: 0 };
       if (typeof game.active.boostTD !== 'number') game.active.boostTD = 1;
       if (typeof game.active.boostHarvest !== 'number') game.active.boostHarvest = 1;
       if (typeof game.active.harvestTimer !== 'number') game.active.harvestTimer = 0;
       if (typeof game.active.harvestDuration !== 'number') game.active.harvestDuration = 0;
+      if (typeof game.active.leylineTapTimer !== 'number') game.active.leylineTapTimer = 0;
+      if (typeof game.active.leylineTapPct !== 'number') game.active.leylineTapPct = 0;
       if (typeof game.softPrestige !== 'number') game.softPrestige = 0;
       if (typeof game.ascension !== 'number') game.ascension = 0;
       if (typeof game.studyCount !== 'number') game.studyCount = 0;
       if (typeof game.stamina !== 'number') game.stamina = 0;
       if (typeof game.focus !== 'number') game.focus = 0;
+      if (!Array.isArray(game.relics)) game.relics = [];
+      if (!Array.isArray(game.relicDraft)) game.relicDraft = [];
+      if (typeof game.relicDraftSeen !== 'boolean') game.relicDraftSeen = false;
+      if (typeof game.sigilStacks !== 'number') game.sigilStacks = 0;
+      if (typeof game.relicHuntCooldownEnd !== 'number') game.relicHuntCooldownEnd = 0;
+      game.relics = (game.relics || []).filter(id => RELIC_BY_ID[id]);
+      game.relicDraft = (game.relicDraft || []).filter(id => RELIC_BY_ID[id]);
       if (!game.settings || typeof game.settings !== 'object') game.settings = { showTutorial: true };
       if (typeof game.settings.showTutorial !== 'boolean') game.settings.showTutorial = true;
       if (!game.tutorial || typeof game.tutorial !== 'object') game.tutorial = { clicked: false, done: false, completedToast: false };
@@ -3153,8 +3667,9 @@
       if (typeof game.tutorial.completedToast !== 'boolean') game.tutorial.completedToast = false;
       if (!Array.isArray(game.memorizedSpells)) game.memorizedSpells = [];
       if (typeof game.spellSwapCooldownEnd !== 'number') game.spellSwapCooldownEnd = 0;
-      if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0 };
-      if (game.prestigeTokenChoice !== 'font' && game.prestigeTokenChoice !== 'study') game.prestigeTokenChoice = null;
+      if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
+      if (typeof game.paragonSpent.focus !== 'number') game.paragonSpent.focus = 0;
+      if (game.prestigeTokenChoice !== 'font' && game.prestigeTokenChoice !== 'study' && game.prestigeTokenChoice !== 'relic') game.prestigeTokenChoice = null;
       capMana();
       capStamina();
       capFocus();
@@ -3169,14 +3684,15 @@
         game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gained;
         const staminaGain = staminaPerSecond() * dtSec * 0.25;
         game.stamina = Math.min(game.stamina + staminaGain, maxStamina());
-        const focusWarmupSec = FOCUS_IDLE_SEC / FOCUS_OFFLINE_DIVISOR;
+        const focusWarmupSec = (FOCUS_IDLE_SEC * focusIdleMultiplier()) / FOCUS_OFFLINE_DIVISOR;
         const focusRegenSec = Math.max(0, dtSec - focusWarmupSec);
-        const focusGain = focusRegenSec * FOCUS_REGEN_BASE * OFFLINE_FOCUS_RATE;
+        const focusGain = focusRegenSec * FOCUS_REGEN_BASE * OFFLINE_FOCUS_RATE * focusRegenMultiplier();
         game.focus = Math.min((game.focus || 0) + focusGain, maxFocus());
         const cooldownTick = dtMs * 0.5;
         if (game.spellSwapCooldownEnd > 0) game.spellSwapCooldownEnd = Math.max(now, (game.spellSwapCooldownEnd || now) - cooldownTick);
         if (game.ritualOfBindingCooldownEnd > 0) game.ritualOfBindingCooldownEnd = Math.max(now, (game.ritualOfBindingCooldownEnd || now) - cooldownTick);
         if (game.ritualActivityCooldownEnd > 0) game.ritualActivityCooldownEnd = Math.max(now, (game.ritualActivityCooldownEnd || now) - cooldownTick);
+        if (game.relicHuntCooldownEnd > 0) game.relicHuntCooldownEnd = Math.max(now, (game.relicHuntCooldownEnd || now) - cooldownTick);
         if (dtMs >= 5 * 60 * 1000) {
           showOfflineProgress(gained, staminaGain, focusGain, dtMs);
         } else {
