@@ -163,6 +163,22 @@
       border-width: 8px 8px 8px 0;
       border-color: transparent var(--bg-card) transparent transparent;
     }
+    #loreTip {
+      position: fixed;
+      top: 92px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 14;
+      max-width: 420px;
+      display: none;
+      pointer-events: auto;
+    }
+    #loreTip .lore-close {
+      width: auto;
+      margin-top: 8px;
+      padding: 6px 10px;
+      font-size: 0.85em;
+    }
     .stat { margin: 8px 0; font-size: 0.95em; }
     .cost { font-size: 0.88em; opacity: 0.8; display: block; color: var(--text-muted); margin-top: 2px; }
     .section-divider { margin: 20px 0; height: 1px; background: var(--border); }
@@ -489,6 +505,20 @@
       min-height: 58px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
     }
+    #topCenter {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      gap: 12px;
+      min-width: 240px;
+    }
+    #topActions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
     #topBar .resources { display: flex; align-items: flex-start; gap: 28px; font-size: 1.05em; flex-wrap: wrap; }
     #topBar .resource-block {
       display: flex;
@@ -503,7 +533,20 @@
     #topBar .resource-block .main.mana { color: var(--accent); }
     #topBar .resource-block .main.stamina { color: var(--stamina); }
     #topBar .resource-block .main.focus { color: var(--focus-color); }
-    .exhausted-hint { font-size: 0.85em; color: var(--text-muted); margin-top: 4px; }
+    .exhausted-hint {
+      font-size: 0.85em;
+      color: var(--text);
+      background: rgba(212, 165, 116, 0.18);
+      border: 1px solid rgba(212, 165, 116, 0.45);
+      border-radius: 999px;
+      padding: 6px 10px;
+      white-space: nowrap;
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translate(12px, -50%);
+      box-shadow: 0 0 12px rgba(212, 165, 116, 0.18);
+    }
     #topBar .resource-block .sub { font-size: 0.88em; opacity: 0.88; color: var(--text-muted); }
     #topBar .spell-status-inline { display: flex; align-items: center; gap: 10px; font-size: 0.9em; opacity: 0.95; }
     .mini-progress {
@@ -606,29 +649,28 @@
       inset: 0;
       background: transparent;
       display: none;
-      align-items: flex-end;
-      justify-content: center;
+      align-items: stretch;
+      justify-content: flex-end;
       z-index: 15;
-      padding: 0 24px 78px;
       pointer-events: none;
     }
     .panel-modal.show { display: flex; }
     .panel-modal .panel-content {
       background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-bottom: none;
-      border-radius: var(--radius) var(--radius) 0 0;
-      padding: 18px 20px 22px;
-      width: min(980px, 100%);
-      max-height: 280px;
+      border-left: 1px solid var(--border);
+      border-radius: 0;
+      padding: 22px 20px;
+      width: min(380px, 92vw);
+      height: 100%;
+      max-height: none;
       overflow-y: auto;
-      box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.45);
-      transform: translateY(100%);
+      box-shadow: -10px 0 28px rgba(0, 0, 0, 0.45);
+      transform: translateX(100%);
       transition: transform 0.2s ease, opacity 0.2s ease;
       opacity: 0.98;
       pointer-events: auto;
     }
-    .panel-modal.show .panel-content { transform: translateY(0); opacity: 1; }
+    .panel-modal.show .panel-content { transform: translateX(0); opacity: 1; }
     .panel-modal .panel-header {
       display: flex;
       justify-content: space-between;
@@ -795,7 +837,8 @@
       .game-title { font-size: 1em; }
       #topBar { padding: 10px 14px; gap: 10px; }
       #topBar .resource-block { padding: 4px 8px; font-size: 0.95em; }
-      .panel-modal { padding: 0 12px 70px; }
+      #topCenter { min-width: 0; flex-wrap: wrap; }
+      .exhausted-hint { position: static; transform: none; margin-left: 0; }
       .panel-modal .panel-content { padding: 20px; }
     }
 
@@ -899,31 +942,35 @@
 <body>
   <header id="topBar">
     <h1 class="game-title" aria-hidden="true">Mage Tower</h1>
-    <div class="resources">
-      <div id="manaBlock" class="resource-block mana-block">
-        <span class="main mana">Mana: <span id="mana">0</span> / <span id="manaMax">1000</span></span>
-        <span class="sub">Mana/sec: <span id="manaPerSec">0</span></span>
-        <div class="mini-progress" aria-hidden="true"><div id="manaFill" class="mini-fill"></div></div>
+    <div id="topCenter">
+      <div class="resources">
+        <div id="manaBlock" class="resource-block mana-block">
+          <span class="main mana">Mana: <span id="mana">0</span> / <span id="manaMax">1000</span></span>
+          <span class="sub">Mana/sec: <span id="manaPerSec">0</span></span>
+          <div class="mini-progress" aria-hidden="true"><div id="manaFill" class="mini-fill"></div></div>
+        </div>
+        <div id="staminaBlock" class="resource-block stamina-block">
+          <span class="main stamina">Stamina: <span id="stamina">0</span> / <span id="staminaMax">100</span></span>
+          <span class="sub">Stamina/sec: <span id="staminaPerSec">0.20</span></span>
+          <div class="mini-progress stamina" aria-hidden="true"><div id="staminaFill" class="mini-fill"></div></div>
+        </div>
+        <div id="focusBlock" class="resource-block focus-block">
+          <span class="main focus">Focus: <span id="focus">0</span> / <span id="focusMax">100</span></span>
+          <span class="sub">Focus/sec: <span id="focusPerSec">0</span> <span id="focusIdleHint">(after 60s idle)</span></span>
+          <div class="mini-progress focus" aria-hidden="true"><div id="focusFill" class="mini-fill"></div></div>
+        </div>
       </div>
-      <div id="staminaBlock" class="resource-block stamina-block">
-        <span class="main stamina">Stamina: <span id="stamina">0</span> / <span id="staminaMax">100</span></span>
-        <span class="sub">Stamina/sec: <span id="staminaPerSec">0.20</span></span>
-        <div class="mini-progress stamina" aria-hidden="true"><div id="staminaFill" class="mini-fill"></div></div>
-      </div>
-      <div id="focusBlock" class="resource-block focus-block">
-        <span class="main focus">Focus: <span id="focus">0</span> / <span id="focusMax">100</span></span>
-        <span class="sub">Focus/sec: <span id="focusPerSec">0</span> <span id="focusIdleHint">(after 60s idle)</span></span>
-        <div class="mini-progress focus" aria-hidden="true"><div id="focusFill" class="mini-fill"></div></div>
-      </div>
+      <div id="exhaustedHint" class="exhausted-hint" style="display:none"></div>
     </div>
-    <div id="exhaustedHint" class="exhausted-hint" style="display:none"></div>
-    <div id="timeDilationStatus" class="spell-status-inline" style="display:none">
-      <span class="label">Time Dilation</span>
-      <span id="timeDilationTime" class="sub">0.0s left</span>
-      <span id="timeDilationBoost" class="sub">Boost: x1.00</span>
-      <div class="progress" style="width:80px;margin:0;"><div id="timeDilationFill" class="fill"></div></div>
+    <div id="topActions">
+      <div id="timeDilationStatus" class="spell-status-inline" style="display:none">
+        <span class="label">Time Dilation</span>
+        <span id="timeDilationTime" class="sub">0.0s left</span>
+        <span id="timeDilationBoost" class="sub">Boost: x1.00</span>
+        <div class="progress" style="width:80px;margin:0;"><div id="timeDilationFill" class="fill"></div></div>
+      </div>
+      <button id="settingsBtn" aria-label="Settings" type="button">&#9881;</button>
     </div>
-    <button id="settingsBtn" aria-label="Settings" type="button">&#9881;</button>
   </header>
 
   <main id="main">
@@ -1209,6 +1256,11 @@
   </div>
 
   <div id="tutorialLayer" aria-hidden="true"></div>
+  <div id="loreTip" class="tutorial-tip pos-bottom">
+    <strong>Why you're here</strong><br>
+    You are a mage who has claimed a leyline nexus. To channel its power and grow in influence, you must raise a tower—room by room—so your connection to the mana flow deepens.
+    <button type="button" id="loreCloseBtn" class="lore-close">Got it</button>
+  </div>
   <div id="toastContainer"></div>
 
   <div id="offlineModal" class="modal">
@@ -1610,6 +1662,8 @@
     const paragonSection = document.getElementById('paragonSection');
     const paragonXpEl = document.getElementById('paragonXpEl');
     const paragonNodes = document.getElementById('paragonNodes');
+    const loreTip = document.getElementById('loreTip');
+    const loreCloseBtn = document.getElementById('loreCloseBtn');
     const toastContainer = document.getElementById('toastContainer');
     const manaBlock = document.getElementById('manaBlock');
     const staminaBlock = document.getElementById('staminaBlock');
@@ -2745,6 +2799,11 @@
         return;
       }
       if (!task2) {
+        const canBuyFont = (game.mana || 0) >= manaFontCost();
+        if (!canBuyFont) {
+          addTutorialTip(towerContainer, '<strong>Gather mana</strong><br>Keep clicking until you can buy a Mana Font.', 'right');
+          return;
+        }
         if (!towerModal.classList.contains('show')) {
           addTutorialTip(towerTab, '<strong>Tower</strong><br>Open this tab to buy a Mana Font.', 'top');
         } else {
@@ -2753,6 +2812,14 @@
         return;
       }
       if (!task3) {
+        const floorCost = effectiveFloorCost();
+        const floorStamCost = maxStamina() * FLOOR_STAMINA_COST_PCT;
+        const canBuild = (game.mana || 0) >= floorCost && (game.stamina || 0) >= floorStamCost;
+        if (!canBuild) {
+          const needStam = (game.stamina || 0) < floorStamCost;
+          addTutorialTip(needStam ? staminaBlock : manaBlock, '<strong>Prepare</strong><br>Wait for resources to raise a floor.', 'bottom');
+          return;
+        }
         if (!towerModal.classList.contains('show')) {
           addTutorialTip(towerTab, '<strong>Raise a floor</strong><br>Open Tower to build your first room.', 'top');
         } else {
@@ -2761,6 +2828,20 @@
         return;
       }
       if (!task4) {
+        const now = Date.now();
+        const affordable = ACTIVITIES.find(a => {
+          const unlockFloors = Number(a.unlockFloors) || 0;
+          if (totalFloors() < unlockFloors) return false;
+          const stamCost = (a.costStaminaPct || 0) * maxStamina();
+          const focusCost = a.focusCost || 0;
+          if ((game.stamina || 0) < stamCost) return false;
+          if ((game.focus || 0) < focusCost) return false;
+          const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
+          if (a.cooldownMs && (game[cooldownKey] || 0) > now) return false;
+          if (typeof a.disabled === 'function' && a.disabled()) return false;
+          return true;
+        });
+        if (!affordable) { clearTutorialLayer(); return; }
         if (!document.getElementById('activitiesModal').classList.contains('show')) {
           addTutorialTip(activitiesTab, '<strong>Activities</strong><br>Spend stamina and focus to gain upgrades.', 'top');
         } else {
@@ -2768,6 +2849,15 @@
           addTutorialTip(firstAction || activitiesTab, '<strong>Try an action</strong><br>Actions improve your tower and magic.', 'left');
         }
       }
+    }
+    function showLoreTip() {
+      if (!loreTip) return;
+      loreTip.style.display = 'block';
+    }
+    function hideLoreTip() {
+      if (!loreTip) return;
+      loreTip.style.display = 'none';
+      try { localStorage.setItem('mageTowerLoreSeen', '1'); } catch (e) {}
     }
 
     function updateBadges() {
@@ -3592,6 +3682,7 @@
       if (statsModal) statsModal.style.display = 'none';
       if (introModal) introModal.style.display = 'none';
       if (roomDetailModal) roomDetailModal.style.display = 'none';
+      if (loreTip) loreTip.style.display = 'none';
     }
     function togglePanelById(id) {
       const modal = document.getElementById(id);
@@ -3644,6 +3735,8 @@
         renderTutorialHints();
       };
     }
+    if (loreCloseBtn) loreCloseBtn.onclick = (e) => { e.stopPropagation(); hideLoreTip(); };
+    if (loreTip) loreTip.onclick = () => hideLoreTip();
     if (settingsTabPrefs) settingsTabPrefs.onclick = () => setSettingsTab('prefs');
     if (settingsTabGlossary) settingsTabGlossary.onclick = () => setSettingsTab('glossary');
     if (settingsTabKeys) settingsTabKeys.onclick = () => setSettingsTab('keys');
@@ -3734,6 +3827,7 @@
       try {
         localStorage.removeItem('mageTowerSave');
         localStorage.removeItem('mageTowerIntroSeen');
+        localStorage.removeItem('mageTowerLoreSeen');
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const k = localStorage.key(i);
           if (k && k.toLowerCase().includes('magetower')) localStorage.removeItem(k);
@@ -3848,8 +3942,8 @@
     checkAchievements();
     openPanel('towerModal');
 
-    if (!localStorage.getItem('mageTowerIntroSeen')) {
-      introModal.style.display = 'flex';
+    if (!localStorage.getItem('mageTowerLoreSeen')) {
+      showLoreTip();
     }
     introCloseBtn.onclick = () => {
       try { localStorage.setItem('mageTowerIntroSeen', '1'); } catch (e) {}
