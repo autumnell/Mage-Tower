@@ -976,6 +976,134 @@
     .offline-gains .gain-value.focus {
       color: var(--focus-color);
     }
+    /* ===== Expanded systems UI ===== */
+    #topBar .secondary-resources {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    #topBar .resource-block.compact {
+      padding: 4px 10px;
+      font-size: 0.9em;
+    }
+    .resource-block .meta {
+      font-size: 0.78em;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+    .panel-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-top: 10px;
+    }
+    .panel-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+    .panel-card .title {
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .panel-card .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .panel-card .muted { color: var(--text-muted); font-size: 0.88em; }
+    .panel-card .small { font-size: 0.85em; }
+    .progress-line {
+      height: 6px;
+      background: var(--bg-deep);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-top: 6px;
+    }
+    .progress-line .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #8ba3f0);
+      transition: width 0.2s ease;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      font-size: 0.75em;
+      color: var(--text-muted);
+    }
+    .tag.good {
+      color: #9adbbd;
+      border-color: rgba(154, 219, 189, 0.5);
+      background: rgba(154, 219, 189, 0.12);
+    }
+    .tag.warn {
+      color: #e0b07d;
+      border-color: rgba(224, 176, 125, 0.5);
+      background: rgba(224, 176, 125, 0.12);
+    }
+    .mini-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .choice-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .module-slot {
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px;
+      font-size: 0.82em;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .module-slot.filled {
+      border-style: solid;
+      color: var(--text);
+    }
+    .glyph-active {
+      border-color: rgba(124, 156, 244, 0.7);
+      box-shadow: 0 0 12px rgba(124, 156, 244, 0.25);
+    }
+    .contract-item,
+    .story-entry {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+    .story-entry.locked { opacity: 0.5; }
+    .rune-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .rune-btn {
+      padding: 8px 6px;
+      font-size: 0.85em;
+      border-radius: 8px;
+    }
+    .cosmetic-sheen {
+      box-shadow: 0 0 16px rgba(124, 156, 244, 0.18), 0 0 26px rgba(124, 156, 244, 0.12);
+    }
   </style>
 </head>
 <body>
@@ -997,6 +1125,24 @@
           <span class="main focus">Focus: <span id="focus">0</span> / <span id="focusMax">100</span></span>
           <span class="sub">Focus/sec: <span id="focusPerSec">0</span> <span id="focusIdleHint">(after 60s idle)</span></span>
           <div class="mini-progress focus" aria-hidden="true"><div id="focusFill" class="mini-fill"></div></div>
+        </div>
+      </div>
+      <div id="secondaryResources" class="secondary-resources">
+        <div id="followersBlock" class="resource-block compact">
+          <span class="main">Followers: <span id="followersTotal">0</span></span>
+          <span class="meta">Reputation: <span id="reputation">0</span>%</span>
+        </div>
+        <div id="goldBlock" class="resource-block compact">
+          <span class="main">Gold: <span id="gold">0</span></span>
+          <span class="meta">Upkeep: <span id="goldUpkeep">0</span>/min</span>
+        </div>
+        <div id="wardsBlock" class="resource-block compact">
+          <span class="main">Wards: <span id="wards">0</span> / <span id="wardsMax">0</span></span>
+          <span class="meta">Regen: <span id="wardsPerSec">0</span>/s</span>
+        </div>
+        <div id="essenceBlock" class="resource-block compact">
+          <span class="main">Essence: <span id="essenceTotal">0</span></span>
+          <span class="meta" id="essenceBreakdown">Arcane 0 · Frost 0 · Fire 0 · Lightning 0 · Astral 0</span>
         </div>
       </div>
       <div id="exhaustedHint" class="exhausted-hint" style="display:none"></div>
@@ -1029,6 +1175,21 @@
     <button class="tab" data-panel="towerModal">
       <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="18" width="16" height="4" rx="1"/><rect x="9" y="12" width="6" height="6"/><rect x="7" y="6" width="10" height="6"/><rect x="10" y="2" width="4" height="4"/></svg>
       <span>Tower</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button id="academyTab" class="tab tab-locked" data-panel="academyModal" title="Unlocks with followers">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4-8 4-8-4 8-4z"/><path d="M4 10v6a8 8 0 0 0 16 0v-6"/><path d="M8 14h8"/></svg>
+      <span>Academy</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button id="libraryTab" class="tab tab-locked" data-panel="libraryModal" title="Unlocks with followers">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h6a3 3 0 0 1 3 3v14H6a3 3 0 0 1-3-3V4z"/><path d="M21 4h-6a3 3 0 0 0-3 3v14h6a3 3 0 0 0 3-3V4z"/></svg>
+      <span>Library</span>
+      <span class="tab-badge" aria-hidden="true"></span>
+    </button>
+    <button id="observatoryTab" class="tab tab-locked" data-panel="observatoryModal" title="Unlocks with followers">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M4.5 19.5l4.5-4.5"/><path d="M19.5 19.5l-4.5-4.5"/><path d="M12 2v4"/><path d="M2 12h4"/><path d="M18 12h4"/></svg>
+      <span>Observatory</span>
       <span class="tab-badge" aria-hidden="true"></span>
     </button>
     <button class="tab" data-panel="relicsModal">
@@ -1095,6 +1256,75 @@
     </div>
   </div>
 
+  <div id="academyModal" class="panel-modal">
+    <div class="panel-content">
+      <div class="panel-header">
+        <h2>Mage Academy</h2>
+        <button class="panel-close" aria-label="Close" onclick="closePanel('academyModal')">&times;</button>
+      </div>
+      <p class="section-title">Outposts & Leyline Links</p>
+      <div id="academySummary" class="stat"></div>
+      <div id="outpostList" class="panel-grid"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Academy Staff</p>
+      <div id="staffList" class="panel-grid"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Market & Assignments</p>
+      <div id="marketPanel"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Tower Modules</p>
+      <div id="moduleInventory" class="panel-grid"></div>
+    </div>
+  </div>
+
+  <div id="libraryModal" class="panel-modal">
+    <div class="panel-content">
+      <div class="panel-header">
+        <h2>Library</h2>
+        <button class="panel-close" aria-label="Close" onclick="closePanel('libraryModal')">&times;</button>
+      </div>
+      <div id="librarySummary" class="stat"></div>
+      <p class="section-title">Research Tree</p>
+      <div id="researchTree" class="panel-grid"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Schools of Magic</p>
+      <div id="schoolChoices" class="panel-grid"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Risk-Reward Glyphs</p>
+      <div id="glyphChoices" class="panel-grid"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Rune Etching</p>
+      <div id="runeEtchingPanel"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Alchemical Crafting</p>
+      <div id="craftingPanel"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Story & Milestones</p>
+      <div id="storyPanel" class="mini-list"></div>
+    </div>
+  </div>
+
+  <div id="observatoryModal" class="panel-modal">
+    <div class="panel-content">
+      <div class="panel-header">
+        <h2>Observatory</h2>
+        <button class="panel-close" aria-label="Close" onclick="closePanel('observatoryModal')">&times;</button>
+      </div>
+      <div id="encounterSummary" class="stat"></div>
+      <p class="section-title">Encounters</p>
+      <div id="encounterPanel"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Contracts</p>
+      <div id="contractsPanel" class="mini-list"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Ascension Challenges</p>
+      <div id="challengePanel"></div>
+      <div class="section-divider"></div>
+      <p class="section-title">Cosmetic Progression</p>
+      <div id="cosmeticPanel"></div>
+    </div>
+  </div>
+
   <div id="relicsModal" class="panel-modal">
     <div class="panel-content">
       <div class="panel-header">
@@ -1133,6 +1363,10 @@
 
   <div id="relicModal" class="modal">
     <div class="modal-content" id="relicChoices"></div>
+  </div>
+
+  <div id="followerEventModal" class="modal">
+    <div class="modal-content" id="followerEventContent"></div>
   </div>
 
   <div id="settingsModal" class="modal">
@@ -1197,6 +1431,26 @@
             <div class="glossary-item">
               <div class="term">Focus</div>
               <div class="desc">Regenerates after resting (idle). Used to cast powerful spells and perform focused activities.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Followers</div>
+              <div class="desc">Your growing base of supporters. They provide bonuses, unlock new tabs, and can be assigned to tasks.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Reputation</div>
+              <div class="desc">Measures trust in your academy. Higher reputation attracts followers faster.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Wards</div>
+              <div class="desc">Your tower’s protective integrity. Overcharge and encounters can drain wards.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Essence</div>
+              <div class="desc">Elemental materials from encounters and rituals. Used for crafting and modules.</div>
+            </div>
+            <div class="glossary-item">
+              <div class="term">Research</div>
+              <div class="desc">Long-term upgrades unlocked via research points gained from outposts and followers.</div>
             </div>
             <div class="glossary-item">
               <div class="term">Mana Fonts</div>
@@ -1364,6 +1618,15 @@
     const SIGIL_STACK_CAP = 12;
     const RELIC_MILESTONES = [6, 16, 30, 50, 75, 100, 140, 180];
     const RELIC_HUNT_COOLDOWN_MS = 25 * 60 * 1000;
+    const FOLLOWER_THRESHOLDS = { academy: 15, library: 45, observatory: 90 };
+    const MAX_OUTPOSTS = 3;
+    const ESSENCE_TYPES = ['arcane', 'frost', 'fire', 'lightning', 'astral'];
+    const RITUAL_WINDOW_MS = 10 * 60 * 1000;
+    const RITUAL_WINDOW_DURATION_MS = 90 * 1000;
+    const OVERCHARGE_GRACE_SEC = 4;
+    const OVERCHARGE_DRAIN_PCT = 0.015;
+    const WARDS_BASE = 100;
+    const WARDS_REGEN_BASE = 0.15;
 
     let game;
     let awaitingRebind = null;
@@ -1543,6 +1806,9 @@
       { id: 'eclipseSeal', name: 'Eclipse Seal', tier: 'rare', desc: '+25% mana/sec, floor costs +12%.', mods: { manaMult: 0.25, floorCostMult: 0.12 } },
       { id: 'goldenLoop', name: 'Golden Loop', tier: 'rare', desc: '+15% active spell duration and +10% max mana.', mods: { activeDurationMult: 0.15, maxManaMult: 0.10 } },
       { id: 'voidCompass', name: 'Void Compass', tier: 'rare', desc: '+20% spell effect, -10% mana/sec.', mods: { spellEffectMult: 0.20, manaMult: -0.10 } },
+      { id: 'stormcore', name: 'Stormcore Prism', tier: 'rare', desc: '+50% lightning spells, -30% fire spells.', mods: { lightningMult: 0.50, fireMult: -0.30 } },
+      { id: 'frostboundMirror', name: 'Frostbound Mirror', tier: 'rare', desc: '+35% frost spells, -6% mana/sec.', mods: { frostMult: 0.35, manaMult: -0.06 } },
+      { id: 'pyreMantle', name: 'Pyre Mantle', tier: 'rare', desc: '+40% fire spells, -8% focus regen.', mods: { fireMult: 0.40, focusRegenMult: -0.08 } },
     ];
     const RELIC_BY_ID = RELICS.reduce((acc, relic) => {
       acc[relic.id] = relic;
@@ -1553,6 +1819,35 @@
       const o = {};
       SPECIAL_ROOM_NAMES.forEach(n => { o[n] = { built: false, level: 0 }; });
       return o;
+    }
+    function initialEssence() {
+      const o = {};
+      ESSENCE_TYPES.forEach(t => { o[t] = 0; });
+      return o;
+    }
+    function initialFollowers() {
+      return { novice: 0, acolyte: 0, sage: 0 };
+    }
+    function initialFollowerAssignments() {
+      return { market: 0, research: 0, ritual: 0, scouting: 0 };
+    }
+    function initialAcademyOutposts() {
+      return Array.from({ length: MAX_OUTPOSTS }, () => ({
+        built: false,
+        role: null,
+        level: 0,
+        modules: [],
+        links: { left: false, right: false },
+      }));
+    }
+    function initialAcademyStaff() {
+      return {};
+    }
+    function initialResearchState() {
+      return { points: 0, unlocked: [] };
+    }
+    function initialEncounterState() {
+      return { active: false, wave: 0, hp: 0, maxHp: 0, timer: 0, modifiers: [], enemyType: null, bossPhase: 0, threat: 0, lastWaveAt: 0 };
     }
     const KEYBIND_DEFAULTS = {
       activities: '1',
@@ -1581,6 +1876,33 @@
       stamina: 0,
       focus: 0,
       manaFonts: 0,
+      gold: 0,
+      wards: WARDS_BASE,
+      essence: initialEssence(),
+      followers: initialFollowers(),
+      reputation: 0,
+      followerAssignments: initialFollowerAssignments(),
+      followerProgress: 0,
+      promotionProgress: { novice: 0, acolyte: 0 },
+      scoutingProgress: 0,
+      academyOutposts: initialAcademyOutposts(),
+      academyStaff: initialAcademyStaff(),
+      research: initialResearchState(),
+      modules: {},
+      schools: { primary: null, secondary: null, slots: 1 },
+      glyphs: { active: null },
+      challenge: { active: null, completed: [], tokens: 0 },
+      encounter: initialEncounterState(),
+      contracts: [],
+      milestonesClaimed: [],
+      storySeen: [],
+      dailyBlessing: { date: null, id: null, bonus: null },
+      runeEtching: { date: null, pattern: [], selected: [], solvedAt: 0, attempts: 0 },
+      runeEtchingBuffEnd: 0,
+      cosmetics: { unlocked: [], active: null },
+      spellSynergy: { lastElement: null, lastCastAt: 0, chain: [] },
+      followerEvent: null,
+      nextFollowerEventAt: 0,
       specialRooms: initialSpecialRooms(),
       stairs: 0,
       passive: { arcane: 0, astral: 0, conduit: 0, towerBond: 0, staminaWell: 0, spellEcho: 0, focusFlow: 0, manaReservoir: 0, ritualMastery: 0, aetherFlux: 0, anchoredRituals: 0 },
@@ -1605,6 +1927,14 @@
         worldweaveTimer: 0,
         convergenceTimer: 0,
         paradoxTimer: 0,
+        overchargeTimer: 0,
+        overchargeMult: 1,
+        concessionTimer: 0,
+        comboTimer: 0,
+        comboMult: 1,
+        overchargeCharge: 0,
+        flameSurgeTimer: 0,
+        frostSlowTimer: 0,
       },
       studyCount: 0,
       stats: {
@@ -1643,6 +1973,8 @@
       scryLockedRoom: null,
       transcribeBonusPct: 0,
       ritualBuffEnd: 0,
+      ritualWindowBonusPct: 0,
+      ritualWindowBonusEnd: 0,
       attuneDiscount: 0,
       ritualActivityCooldownEnd: 0,
       spellEchoNextFreeAt: 0,
@@ -1761,6 +2093,37 @@
     const manaBlock = document.getElementById('manaBlock');
     const staminaBlock = document.getElementById('staminaBlock');
     const focusBlock = document.getElementById('focusBlock');
+    const followersTotalEl = document.getElementById('followersTotal');
+    const reputationEl = document.getElementById('reputation');
+    const goldEl = document.getElementById('gold');
+    const goldUpkeepEl = document.getElementById('goldUpkeep');
+    const wardsEl = document.getElementById('wards');
+    const wardsMaxEl = document.getElementById('wardsMax');
+    const wardsPerSecEl = document.getElementById('wardsPerSec');
+    const essenceTotalEl = document.getElementById('essenceTotal');
+    const essenceBreakdownEl = document.getElementById('essenceBreakdown');
+    const academyTab = document.getElementById('academyTab');
+    const libraryTab = document.getElementById('libraryTab');
+    const observatoryTab = document.getElementById('observatoryTab');
+    const academySummary = document.getElementById('academySummary');
+    const outpostList = document.getElementById('outpostList');
+    const staffList = document.getElementById('staffList');
+    const marketPanel = document.getElementById('marketPanel');
+    const moduleInventory = document.getElementById('moduleInventory');
+    const librarySummary = document.getElementById('librarySummary');
+    const researchTree = document.getElementById('researchTree');
+    const schoolChoices = document.getElementById('schoolChoices');
+    const glyphChoices = document.getElementById('glyphChoices');
+    const runeEtchingPanel = document.getElementById('runeEtchingPanel');
+    const craftingPanel = document.getElementById('craftingPanel');
+    const storyPanel = document.getElementById('storyPanel');
+    const encounterSummary = document.getElementById('encounterSummary');
+    const encounterPanel = document.getElementById('encounterPanel');
+    const contractsPanel = document.getElementById('contractsPanel');
+    const challengePanel = document.getElementById('challengePanel');
+    const cosmeticPanel = document.getElementById('cosmeticPanel');
+    const followerEventModal = document.getElementById('followerEventModal');
+    const followerEventContent = document.getElementById('followerEventContent');
 
     // -------------------- COSTS --------------------
     const manaFontCost = () => 10 + game.manaFonts * 9;
@@ -1806,6 +2169,616 @@
       let special = 0;
       SPECIAL_ROOM_NAMES.forEach(name => { if (sr[name] && sr[name].built) special++; });
       return (g.stairs || 0) + special + (g.floorsKept || 0);
+    }
+    function totalFollowers() {
+      const f = game.followers || {};
+      return (f.novice || 0) + (f.acolyte || 0) + (f.sage || 0);
+    }
+    function totalFollowersFromGame(g) {
+      const f = g.followers || {};
+      return (f.novice || 0) + (f.acolyte || 0) + (f.sage || 0);
+    }
+    function effectiveFollowerScore(f = game.followers || {}) {
+      return (f.novice || 0) + (f.acolyte || 0) * 1.4 + (f.sage || 0) * 2.2;
+    }
+    function assignedFollowers() {
+      const a = game.followerAssignments || {};
+      return (a.market || 0) + (a.research || 0) + (a.ritual || 0) + (a.scouting || 0);
+    }
+    function availableFollowers() {
+      return Math.max(0, totalFollowers() - assignedFollowers());
+    }
+    function diminishingBonus(score, per, cap) {
+      const raw = score * per;
+      if (cap <= 0) return 0;
+      return cap * (1 - Math.exp(-raw / cap));
+    }
+    function followerManaBonusPct() {
+      const score = effectiveFollowerScore();
+      return diminishingBonus(score, 0.004, 0.5);
+    }
+    function followerManaPerSecBonus() {
+      const score = effectiveFollowerScore();
+      return diminishingBonus(score, 0.0016, 0.25);
+    }
+    function followerSpellEffectBonus() {
+      const f = game.followers || {};
+      const score = (f.acolyte || 0) * 0.6 + (f.sage || 0) * 1.2;
+      return diminishingBonus(score, 0.0025, 0.2);
+    }
+    function followerReputationMultiplier() {
+      return 1 + (game.reputation || 0) * 0.0025;
+    }
+    function gainGold(amount) {
+      if (!amount || amount <= 0) return;
+      game.gold = (game.gold || 0) + amount;
+    }
+    function spendGold(amount) {
+      if (!amount || amount <= 0) return true;
+      if ((game.gold || 0) < amount) return false;
+      game.gold -= amount;
+      return true;
+    }
+    function gainEssence(type, amount) {
+      if (!amount || amount <= 0) return;
+      if (!game.essence || typeof game.essence !== 'object') game.essence = initialEssence();
+      if (typeof game.essence[type] !== 'number') game.essence[type] = 0;
+      game.essence[type] += amount;
+    }
+    function spendEssence(type, amount) {
+      if (!amount || amount <= 0) return true;
+      if (!game.essence || typeof game.essence !== 'object') game.essence = initialEssence();
+      if ((game.essence[type] || 0) < amount) return false;
+      game.essence[type] -= amount;
+      return true;
+    }
+    function gainFollowers(count) {
+      if (!count || count <= 0) return;
+      if (!game.followers || typeof game.followers !== 'object') game.followers = initialFollowers();
+      game.followers.novice = (game.followers.novice || 0) + count;
+    }
+    function loseFollowers(count) {
+      if (!count || count <= 0) return;
+      if (!game.followers || typeof game.followers !== 'object') game.followers = initialFollowers();
+      let remaining = count;
+      const remove = (tier) => {
+        const avail = game.followers[tier] || 0;
+        const take = Math.min(avail, remaining);
+        game.followers[tier] = avail - take;
+        remaining -= take;
+      };
+      remove('novice');
+      remove('acolyte');
+      remove('sage');
+    }
+    function adjustReputation(delta) {
+      const rep = (game.reputation || 0) + delta;
+      game.reputation = Math.max(0, Math.min(100, rep));
+    }
+    function assignmentCount(key) {
+      return (game.followerAssignments && game.followerAssignments[key]) ? game.followerAssignments[key] : 0;
+    }
+    function assignFollowers(task, delta) {
+      if (!game.followerAssignments) game.followerAssignments = initialFollowerAssignments();
+      const current = game.followerAssignments[task] || 0;
+      if (delta > 0 && assignedFollowers() >= totalFollowers()) return;
+      if (delta < 0 && current <= 0) return;
+      game.followerAssignments[task] = Math.max(0, current + delta);
+    }
+    function followerGrowthPerSecond() {
+      const base = 0.003;
+      const scouting = assignmentCount('scouting') * 0.0006;
+      const outpost = outpostEffects().followers || 0;
+      const staff = staffEffect('followers') || 0;
+      const research = researchEffect('followers') || 0;
+      const blessing = dailyBlessingBonus('followers');
+      return (base + scouting + outpost + staff) * followerReputationMultiplier() * (1 + research + blessing);
+    }
+    function promoteFollowers(dt) {
+      if (!game.followers) return;
+      const promoMult = 1 + (staffEffect('promotion') || 0);
+      const noviceRate = 0.0007 * promoMult;
+      const acolyteRate = 0.00035 * promoMult;
+      game.promotionProgress = game.promotionProgress || { novice: 0, acolyte: 0 };
+      const novices = game.followers.novice || 0;
+      const acolytes = game.followers.acolyte || 0;
+      game.promotionProgress.novice += novices * noviceRate * dt;
+      game.promotionProgress.acolyte += acolytes * acolyteRate * dt;
+      const toAcolyte = Math.floor(game.promotionProgress.novice);
+      const toSage = Math.floor(game.promotionProgress.acolyte);
+      if (toAcolyte > 0) {
+        game.promotionProgress.novice -= toAcolyte;
+        game.followers.novice = Math.max(0, novices - toAcolyte);
+        game.followers.acolyte = (game.followers.acolyte || 0) + toAcolyte;
+      }
+      if (toSage > 0) {
+        game.promotionProgress.acolyte -= toSage;
+        game.followers.acolyte = Math.max(0, (game.followers.acolyte || 0) - toSage);
+        game.followers.sage = (game.followers.sage || 0) + toSage;
+      }
+    }
+    function getDailyBlessing() {
+      if (!game.dailyBlessing || !game.dailyBlessing.id) return null;
+      return DAILY_BLESSINGS.find(b => b.id === game.dailyBlessing.id) || null;
+    }
+    function dailyBlessingBonus(key) {
+      const b = getDailyBlessing();
+      if (!b || !b.mods) return 0;
+      const val = b.mods[key];
+      return typeof val === 'number' ? val : 0;
+    }
+    function currentDayKey() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function ensureDailyBlessing() {
+      const key = currentDayKey();
+      if (!game.dailyBlessing || game.dailyBlessing.date !== key) {
+        const blessing = DAILY_BLESSINGS[Math.floor(Math.random() * DAILY_BLESSINGS.length)];
+        game.dailyBlessing = { date: key, id: blessing.id, bonus: blessing.mods };
+        showToast('Daily Blessing', blessing.name + ' · ' + blessing.desc);
+      }
+    }
+    function ensureRunePattern() {
+      const key = currentDayKey();
+      if (!game.runeEtching || game.runeEtching.date !== key) {
+        const pattern = [];
+        while (pattern.length < 3) {
+          pattern.push(RUNE_SYMBOLS[Math.floor(Math.random() * RUNE_SYMBOLS.length)]);
+        }
+        game.runeEtching = { date: key, pattern, selected: [], solvedAt: 0, attempts: 0 };
+      }
+    }
+    function runeEtchingMaxAttempts() {
+      const bonus = staffEffect('rune') || 0;
+      return 3 + (bonus >= 0.1 ? 1 : 0);
+    }
+    function arraysEqual(a, b) {
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+      }
+      return true;
+    }
+    function attemptRuneEtching() {
+      ensureRunePattern();
+      const state = game.runeEtching;
+      const maxAttempts = runeEtchingMaxAttempts();
+      if (!state || (state.attempts || 0) >= maxAttempts) {
+        showToast('Rune Etching', 'No attempts left today.');
+        return;
+      }
+      state.attempts = (state.attempts || 0) + 1;
+      const success = arraysEqual(state.selected, state.pattern);
+      if (success) {
+        state.solvedAt = Date.now();
+        const duration = 5 * 60 * 1000 * (1 + (staffEffect('rune') || 0));
+        game.runeEtchingBuffEnd = Date.now() + duration;
+        showToast('Rune Etched', 'Spell power boosted for 5 minutes.');
+      } else {
+        showToast('Rune Etching', 'The pattern resists your attempt.');
+      }
+      state.selected = [];
+    }
+    function researchPointsPerSecond() {
+      const base = 0.002;
+      const assigned = assignmentCount('research') * 0.0008;
+      const outpost = outpostEffects().research || 0;
+      const staff = staffEffect('research') || 0;
+      const blessing = dailyBlessingBonus('research');
+      const researchBoost = researchEffect('research') || 0;
+      const challengeBonus = completedChallengeBonus('research') + challengeReward('research');
+      return (base + assigned + outpost + staff) * (1 + researchBoost + blessing + challengeBonus);
+    }
+    function goldPerSecond() {
+      const market = assignmentCount('market') * 0.02;
+      const staffMult = 1 + (staffEffect('gold') || 0) + (staffEffect('market') || 0);
+      const repMult = 1 + (game.reputation || 0) * 0.001;
+      const blessing = 1 + dailyBlessingBonus('gold');
+      return market * staffMult * repMult * blessing;
+    }
+    function canAffordCost(cost) {
+      if (!cost) return true;
+      if (cost.gold && (game.gold || 0) < cost.gold) return false;
+      if (cost.essence) {
+        return ESSENCE_TYPES.every(t => (game.essence && game.essence[t] || 0) >= (cost.essence[t] || 0));
+      }
+      return true;
+    }
+    function payCost(cost) {
+      if (!canAffordCost(cost)) return false;
+      if (cost.gold) spendGold(cost.gold);
+      if (cost.essence) {
+        ESSENCE_TYPES.forEach(t => {
+          const amt = cost.essence[t] || 0;
+          if (amt > 0) spendEssence(t, amt);
+        });
+      }
+      return true;
+    }
+    function formatCost(cost) {
+      if (!cost) return '';
+      const parts = [];
+      if (cost.gold) parts.push(cost.gold + ' gold');
+      if (cost.essence) {
+        ESSENCE_TYPES.forEach(t => {
+          const amt = cost.essence[t] || 0;
+          if (amt > 0) parts.push(amt + ' ' + t);
+        });
+      }
+      return parts.join(', ');
+    }
+    function moduleSlotsPerOutpost() {
+      const base = 1;
+      const bonus = researchEffect('moduleSlots') || 0;
+      return base + bonus;
+    }
+    function outpostBuildCost(index) {
+      const tier = Math.min(2, Math.max(0, index));
+      return { gold: 120 + tier * 80, essence: { arcane: 6 + tier * 4, fire: 4 + tier * 2 } };
+    }
+    function outpostUpgradeCost(level) {
+      const lvl = Math.max(1, level);
+      return { gold: 60 + lvl * 45, essence: { arcane: 4 + lvl * 2 } };
+    }
+    function buildOutpost(index) {
+      const outposts = game.academyOutposts || [];
+      const o = outposts[index];
+      if (!o || o.built) return;
+      const cost = outpostBuildCost(index);
+      if (!payCost(cost)) return;
+      o.built = true;
+      o.level = 1;
+      o.role = o.role || 'ward';
+      o.modules = [];
+    }
+    function upgradeOutpost(index) {
+      const outposts = game.academyOutposts || [];
+      const o = outposts[index];
+      if (!o || !o.built) return;
+      const cost = outpostUpgradeCost(o.level || 1);
+      if (!payCost(cost)) return;
+      o.level = (o.level || 1) + 1;
+    }
+    function setOutpostRole(index, roleId) {
+      const outposts = game.academyOutposts || [];
+      const o = outposts[index];
+      if (!o || !o.built) return;
+      o.role = roleId;
+    }
+    function toggleOutpostLink(index, side) {
+      const outposts = game.academyOutposts || [];
+      const o = outposts[index];
+      if (!o || !o.built) return;
+      if (!o.links) o.links = { left: false, right: false };
+      o.links[side] = !o.links[side];
+      if (side === 'left' && outposts[index - 1] && outposts[index - 1].built) {
+        if (!outposts[index - 1].links) outposts[index - 1].links = { left: false, right: false };
+        outposts[index - 1].links.right = o.links.left;
+      }
+      if (side === 'right' && outposts[index + 1] && outposts[index + 1].built) {
+        if (!outposts[index + 1].links) outposts[index + 1].links = { left: false, right: false };
+        outposts[index + 1].links.left = o.links.right;
+      }
+    }
+    function installModule(index, moduleId) {
+      const outposts = game.academyOutposts || [];
+      const o = outposts[index];
+      if (!o || !o.built) return;
+      const slots = moduleSlotsPerOutpost();
+      if (!Array.isArray(o.modules)) o.modules = [];
+      if (o.modules.length >= slots) return;
+      if (moduleCount(moduleId) <= 0) return;
+      o.modules.push(moduleId);
+      removeModule(moduleId, 1);
+    }
+    function removeModuleFromOutpost(index, slotIdx) {
+      const outposts = game.academyOutposts || [];
+      const o = outposts[index];
+      if (!o || !o.built || !Array.isArray(o.modules)) return;
+      const id = o.modules[slotIdx];
+      if (!id) return;
+      o.modules.splice(slotIdx, 1);
+      addModule(id, 1);
+    }
+    function setSchoolSlot(slot, id) {
+      if (!getSchoolById(id)) return;
+      if (!game.schools) game.schools = { primary: null, secondary: null, slots: 1 };
+      if (slot === 'primary') game.schools.primary = id;
+      if (slot === 'secondary' && (game.schools.slots || 1) >= 2) game.schools.secondary = id;
+    }
+    function clearSchoolSlot(slot) {
+      if (!game.schools) return;
+      if (slot === 'primary') game.schools.primary = null;
+      if (slot === 'secondary') game.schools.secondary = null;
+    }
+    function toggleGlyph(id) {
+      if (!game.glyphs) game.glyphs = { active: null };
+      game.glyphs.active = game.glyphs.active === id ? null : id;
+    }
+    function activeChallenge() {
+      const id = game.challenge && game.challenge.active;
+      return ASCENSION_CHALLENGES.find(c => c.id === id) || null;
+    }
+    function challengePenalty(key) {
+      const c = activeChallenge();
+      if (!c || !c.penalties) return 0;
+      const val = c.penalties[key];
+      return typeof val === 'number' ? val : 0;
+    }
+    function challengeReward(key) {
+      const c = activeChallenge();
+      if (!c || !c.rewards) return 0;
+      const val = c.rewards[key];
+      return typeof val === 'number' ? val : 0;
+    }
+    function completedChallengeBonus(key) {
+      if (!game.challenge || !Array.isArray(game.challenge.completed)) return 0;
+      let total = 0;
+      game.challenge.completed.forEach(id => {
+        const c = ASCENSION_CHALLENGES.find(ch => ch.id === id);
+        if (!c || !c.rewards) return;
+        const val = c.rewards[key];
+        if (typeof val === 'number') total += val;
+      });
+      return total;
+    }
+    function activateChallenge(id) {
+      if (!ASCENSION_CHALLENGES.find(c => c.id === id)) return;
+      game.challenge.active = id;
+    }
+    function moduleCount(id) {
+      if (!game.modules || typeof game.modules !== 'object') game.modules = {};
+      return game.modules[id] || 0;
+    }
+    function addModule(id, count = 1) {
+      if (!game.modules || typeof game.modules !== 'object') game.modules = {};
+      game.modules[id] = (game.modules[id] || 0) + count;
+    }
+    function removeModule(id, count = 1) {
+      if (!game.modules || typeof game.modules !== 'object') game.modules = {};
+      game.modules[id] = Math.max(0, (game.modules[id] || 0) - count);
+    }
+    function scheduleNextFollowerEvent() {
+      const now = Date.now();
+      const variance = (Math.random() * 2 + 4) * 60 * 1000;
+      game.nextFollowerEventAt = now + variance;
+    }
+    function openFollowerEventModal() {
+      if (!followerEventModal || !followerEventContent || !game.followerEvent) return;
+      const event = game.followerEvent;
+      followerEventContent.innerHTML = '';
+      const title = document.createElement('h3');
+      title.textContent = event.title;
+      const body = document.createElement('p');
+      body.textContent = event.text;
+      followerEventContent.appendChild(title);
+      followerEventContent.appendChild(body);
+      const choices = document.createElement('div');
+      choices.className = 'choice-row';
+      event.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'event-choice';
+        btn.textContent = opt.label;
+        btn.onclick = () => {
+          opt.effect();
+          game.followerEvent = null;
+          followerEventModal.style.display = 'none';
+          scheduleNextFollowerEvent();
+          renderAll();
+        };
+        choices.appendChild(btn);
+      });
+      followerEventContent.appendChild(choices);
+      followerEventModal.style.display = 'flex';
+    }
+    function maybeTriggerFollowerEvent() {
+      if (game.followerEvent) return;
+      if (totalFollowers() < 10) return;
+      if (!game.nextFollowerEventAt) {
+        scheduleNextFollowerEvent();
+        return;
+      }
+      const now = Date.now();
+      if ((game.nextFollowerEventAt || 0) > now) return;
+      const event = FOLLOWER_EVENTS[Math.floor(Math.random() * FOLLOWER_EVENTS.length)];
+      game.followerEvent = event;
+      openFollowerEventModal();
+    }
+    function pickWaveModifiers(count) {
+      const bag = WAVE_MODIFIERS.slice();
+      const picks = [];
+      while (bag.length && picks.length < count) {
+        const idx = Math.floor(Math.random() * bag.length);
+        picks.push(bag.splice(idx, 1)[0]);
+      }
+      return picks;
+    }
+    function encounterSpellPower() {
+      const base = manaPerSecond() * 0.12 + maxMana() * 0.01;
+      const effect = spellEffectMultiplier() * activeEffectMultiplier();
+      const school = 1 + schoolBonus('combo');
+      return base * effect * school;
+    }
+    function encounterPlayerDamageMult(manaRatio, mods, enemy) {
+      let mult = 1 + (researchEffect('encounterDamage') || 0);
+      const module = moduleEffects().encounterDamage || 0;
+      mult += module;
+      const schoolLightning = schoolBonus('combo');
+      mult += schoolLightning;
+      const glyphPenalty = glyphBonus('spellCost');
+      if (glyphPenalty > 0) mult *= 1 - glyphPenalty * 0.25;
+      if (enemy && enemy.highMana && manaRatio >= 0.8) mult *= 1 + (enemy.highMana.playerDamage || 0);
+      if (enemy && enemy.lowMana && manaRatio <= 0.4) mult *= 1 + (enemy.lowMana.playerDamage || 0);
+      if (enemy && enemy.steady) mult *= 1 + (enemy.steady.playerDamage || 0);
+      mods.forEach(m => { if (m.playerDamage) mult *= 1 + m.playerDamage; });
+      return Math.max(0.2, mult);
+    }
+    function encounterEnemyDamageMult(manaRatio, mods, enemy) {
+      let mult = 1 + glyphBonus('enemyDamage');
+      if (enemy && enemy.highMana && manaRatio >= 0.8) mult *= 1 + (enemy.highMana.enemyDamage || 0);
+      if (enemy && enemy.overcharge && (game.active && game.active.overchargeTimer > 0)) mult *= 1 + (enemy.overcharge.enemyDamage || 0);
+      mods.forEach(m => { if (m.enemyDamage) mult *= 1 + m.enemyDamage; });
+      return Math.max(0.1, mult);
+    }
+    function startEncounter() {
+      if (game.encounter && game.encounter.active) return;
+      if (!game.encounter) game.encounter = initialEncounterState();
+      const wave = (game.encounter.wave || 0) + 1;
+      const enemy = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)];
+      const modifierCount = wave % 5 === 0 ? 2 : 1;
+      const modifiers = pickWaveModifiers(modifierCount);
+      const threat = game.encounter.threat || 0;
+      const baseHp = 80 + wave * 25 + totalFloors() * 2;
+      let hp = baseHp * (1 + threat * 0.04);
+      modifiers.forEach(m => { if (m.hpMult) hp *= m.hpMult; });
+      const timeLimit = Math.max(18, 40 - wave * 0.4);
+      game.encounter = {
+        active: true,
+        wave,
+        hp,
+        maxHp: hp,
+        timer: timeLimit,
+        modifiers: modifiers.map(m => m.id),
+        enemyType: enemy.id,
+        bossPhase: 0,
+        threat,
+        lastWaveAt: Date.now(),
+      };
+    }
+    function resolveEncounterOutcome(success) {
+      const enc = game.encounter || initialEncounterState();
+      const wave = enc.wave || 0;
+      const mods = (enc.modifiers || []).map(id => WAVE_MODIFIERS.find(m => m.id === id)).filter(Boolean);
+      let rewardMult = 1;
+      mods.forEach(m => { if (m.rewardMult) rewardMult *= m.rewardMult; });
+      rewardMult *= 1 + (moduleEffects().essenceDrop || 0) + challengeReward('essenceDrop') + completedChallengeBonus('essenceDrop');
+      if (success) {
+        const goldGain = Math.round((30 + wave * 6) * rewardMult);
+        gainGold(goldGain);
+        const essenceType = selectedSchools()[0] || ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)];
+        const essenceBase = Math.round((4 + wave * 1.2) * rewardMult);
+        gainEssence(essenceType, essenceBase);
+        if (Math.random() < 0.15) gainFollowers(2);
+        showToast('Encounter cleared', '+' + goldGain + ' gold · +' + essenceBase + ' ' + essenceType + ' essence');
+        onWaveCompleted(true);
+      } else {
+        adjustReputation(-3);
+        loseFollowers(4);
+        showToast('Encounter failed', 'Your wards falter. Reputation slips.');
+        onWaveCompleted(false);
+      }
+      game.encounter.active = false;
+    }
+    function updateEncounter(dt) {
+      if (!game.encounter || !game.encounter.active) return;
+      const enc = game.encounter;
+      const enemy = ENEMY_TYPES.find(e => e.id === enc.enemyType);
+      const mods = (enc.modifiers || []).map(id => WAVE_MODIFIERS.find(m => m.id === id)).filter(Boolean);
+      const manaRatio = maxMana() > 0 ? (game.mana || 0) / maxMana() : 0;
+      let damageMult = encounterPlayerDamageMult(manaRatio, mods, enemy);
+      const moduleBonus = moduleEffects();
+      const frostSlow = (game.active && game.active.frostSlowTimer > 0) ? 0.15 : 0;
+      const slow = Math.min(0.6, (moduleBonus.slow || 0) + schoolBonus('slow') + frostSlow);
+      const speedMult = mods.reduce((acc, m) => acc * (m.speedMult || 1), 1) * Math.max(0.5, 1 - slow);
+      const bossWave = enc.wave % 5 === 0;
+      if (bossWave && enc.bossPhase >= 1) damageMult *= 0.88;
+      const dps = encounterSpellPower() * damageMult;
+      enc.hp -= dps * dt;
+      enc.timer -= dt * speedMult;
+      const baseEnemy = (1 + enc.wave * 0.12) * (1 + (enc.threat || 0) * 0.04);
+      let enemyMult = encounterEnemyDamageMult(manaRatio, mods, enemy);
+      enemyMult *= Math.max(0.5, 1 - slow);
+      if (bossWave && enc.bossPhase >= 2) enemyMult *= 1.2;
+      if (moduleBonus.stun && Math.random() < moduleBonus.stun * dt) enemyMult *= 0.5;
+      const wardDamage = baseEnemy * enemyMult * dt;
+      game.wards = Math.max(0, (game.wards || 0) - wardDamage);
+      if (bossWave) {
+        const hpPct = enc.maxHp > 0 ? enc.hp / enc.maxHp : 0;
+        if (hpPct < 0.6 && enc.bossPhase < 1) {
+          enc.bossPhase = 1;
+          game.mana = Math.max(0, game.mana - maxMana() * 0.08);
+          game.active.spellCostDiscountPct = -0.15;
+          game.active.spellCostDiscountTimer = Math.max(game.active.spellCostDiscountTimer || 0, 8);
+          showToast('Boss Phase', 'Silence surge: spells cost more.');
+        }
+        if (hpPct < 0.3 && enc.bossPhase < 2) {
+          enc.bossPhase = 2;
+        }
+      }
+      if (enc.hp <= 0) {
+        resolveEncounterOutcome(true);
+      } else if (enc.timer <= 0 || game.wards <= 0) {
+        resolveEncounterOutcome(false);
+      }
+    }
+    function ensureContracts() {
+      if (!researchFlag('unlockContracts')) return;
+      if (!Array.isArray(game.contracts)) game.contracts = [];
+      game.contracts = game.contracts.filter(c => !c.expired && !c.claimed);
+      while (game.contracts.length < 2) {
+        const pool = CONTRACT_TEMPLATES.filter(t => !game.contracts.some(c => c.id === t.id));
+        if (pool.length === 0) break;
+        const template = pool[Math.floor(Math.random() * pool.length)];
+        game.contracts.push({
+          ...template,
+          progress: 0,
+          accepted: false,
+          complete: false,
+          claimed: false,
+          expiresAt: 0,
+        });
+      }
+    }
+    function acceptContract(idx) {
+      const c = game.contracts[idx];
+      if (!c || c.accepted) return;
+      c.accepted = true;
+      c.expiresAt = Date.now() + c.duration * 1000;
+    }
+    function claimContract(idx) {
+      const c = game.contracts[idx];
+      if (!c || !c.complete || c.claimed) return;
+      c.claimed = true;
+      const reward = c.reward || {};
+      if (reward.gold) gainGold(reward.gold);
+      if (reward.essence) {
+        Object.keys(reward.essence).forEach(t => gainEssence(t, reward.essence[t]));
+      }
+      showToast('Contract complete', 'Rewards delivered.');
+    }
+    function updateContracts(dt) {
+      if (!Array.isArray(game.contracts)) return;
+      const now = Date.now();
+      game.contracts.forEach(c => {
+        if (!c.accepted || c.complete || c.claimed) return;
+        if (c.expiresAt && now > c.expiresAt) {
+          c.expired = true;
+          return;
+        }
+        if (c.type === 'wardHold') {
+          const ratio = maxWards() > 0 ? (game.wards || 0) / maxWards() : 0;
+          if (ratio >= 0.4) c.progress += dt;
+          else c.progress = Math.max(0, c.progress - dt * 0.5);
+          if (c.progress >= c.target) c.complete = true;
+        }
+      });
+    }
+    function onWaveCompleted(success) {
+      if (!success || !Array.isArray(game.contracts)) return;
+      const manaRatio = maxMana() > 0 ? (game.mana || 0) / maxMana() : 0;
+      game.contracts.forEach(c => {
+        if (!c.accepted || c.complete || c.claimed) return;
+        if (c.type === 'waves') {
+          c.progress += 1;
+          if (c.progress >= c.target) c.complete = true;
+        }
+        if (c.type === 'manaLimit' && manaRatio <= 0.4) {
+          c.progress += 1;
+          if (c.progress >= c.target) c.complete = true;
+        }
+      });
     }
     function conduitMasteryMultiplier() {
       const lvl = game.passive.conduit || 0;
@@ -1920,6 +2893,9 @@
         activeDurationMult: 0,
         floorCostMult: 0,
         upgradeCostMult: 0,
+        lightningMult: 0,
+        fireMult: 0,
+        frostMult: 0,
       };
       const list = game.relics || [];
       list.forEach(id => {
@@ -1930,6 +2906,25 @@
         });
       });
       return mods;
+    }
+    function artifactModifiers() {
+      const mods = { manaMult: 0, maxFocusBonus: 0, wardsMax: 0 };
+      const claimed = new Set(game.milestonesClaimed || []);
+      ARTIFACTS.forEach(a => {
+        if (!claimed.has(a.id) || !a.mods) return;
+        Object.keys(a.mods).forEach(key => {
+          mods[key] = (mods[key] || 0) + a.mods[key];
+        });
+      });
+      return mods;
+    }
+    function claimArtifact(id) {
+      const art = ARTIFACTS.find(a => a.id === id);
+      if (!art || !art.unlock(game)) return;
+      if (!Array.isArray(game.milestonesClaimed)) game.milestonesClaimed = [];
+      if (game.milestonesClaimed.includes(id)) return;
+      game.milestonesClaimed.push(id);
+      showToast('Artifact claimed', art.name + ' acquired.');
     }
     function relicMilestonesReached() {
       const floors = totalFloors();
@@ -1955,18 +2950,41 @@
       const roomBonus = roomEffectSum('focusPct');
       const passiveBonus = (game.passive.focusFlow || 0) * 0.05;
       const relicBonus = relicModifiers().focusRegenMult || 0;
-      return 1 + roomBonus + passiveBonus + relicBonus;
+      const school = schoolBonus('focusRegen') || 0;
+      const challenge = challengePenalty('focusRegen') + completedChallengeBonus('focusRegen') + challengeReward('focusRegen');
+      return 1 + roomBonus + passiveBonus + relicBonus + school + challenge;
     }
     function activeEffectMultiplier() {
-      return (game.active && game.active.convergenceTimer > 0) ? 2 : 1;
+      let mult = 1;
+      if (game.active && game.active.convergenceTimer > 0) mult *= 2;
+      if (game.active && game.active.comboTimer > 0) mult *= (game.active.comboMult || 1);
+      return mult;
     }
     function ritualDurationMultiplier() {
       const anchored = (game.passive.anchoredRituals || 0) * 0.04;
-      return activeDurationMultiplier() * (1 + anchored);
+      const school = schoolBonus('ritualDuration') || 0;
+      const bonus = dailyBlessingBonus('ritualDuration') + completedChallengeBonus('ritualDuration');
+      return activeDurationMultiplier() * (1 + anchored + school + bonus);
     }
     function ritualCostMultiplier() {
       const anchored = (game.passive.anchoredRituals || 0) * 0.02;
-      return Math.max(0.4, 1 - anchored);
+      const ritualAssist = assignmentCount('ritual') * 0.01;
+      const schoolCost = schoolBonus('spellCost') || 0;
+      const glyphCost = glyphBonus('spellCost') || 0;
+      return Math.max(0.35, 1 - anchored - ritualAssist + schoolCost + glyphCost);
+    }
+    function ritualWindowInfo() {
+      const now = Date.now();
+      const offset = now % RITUAL_WINDOW_MS;
+      const inWindow = offset <= RITUAL_WINDOW_DURATION_MS;
+      const remaining = inWindow ? (RITUAL_WINDOW_DURATION_MS - offset) : (RITUAL_WINDOW_MS - offset);
+      return { inWindow, remaining };
+    }
+    function ritualWindowMultiplier() {
+      const info = ritualWindowInfo();
+      if (!info.inWindow) return 1;
+      const researchBonus = researchEffect('ritualWindow') || 0;
+      return 1.2 + researchBonus;
     }
     function currentSpellCostDiscount() {
       if (game.active && game.active.spellCostDiscountTimer > 0) return game.active.spellCostDiscountPct || 0;
@@ -2078,6 +3096,23 @@
       mult *= (1 + (game.transcribeBonusPct || 0) / 100);
       mult *= (1 + (relicModifiers().spellEffectMult || 0));
       mult *= paragonSpellEffectMultiplier();
+      mult *= 1 + followerSpellEffectBonus();
+      mult *= 1 + schoolBonus('spellEffect');
+      mult *= 1 + glyphBonus('spellEffect');
+      mult *= 1 + dailyBlessingBonus('spellEffect');
+      mult *= 1 + challengeReward('spellEffect') + completedChallengeBonus('spellEffect');
+      if (game.active && game.active.overchargeTimer > 0) {
+        mult *= (game.active.overchargeMult || (1.2 + schoolBonus('overcharge')));
+      }
+      if ((game.runeEtchingBuffEnd || 0) > Date.now()) mult *= 1.1;
+      return mult;
+    }
+    function elementalSpellMultiplier(element) {
+      const mods = relicModifiers();
+      let mult = 1;
+      if (element === 'lightning') mult *= 1 + (mods.lightningMult || 0);
+      if (element === 'fire') mult *= 1 + (mods.fireMult || 0);
+      if (element === 'frost') mult *= 1 + (mods.frostMult || 0);
       return mult;
     }
     function milestoneManaMultiplier() {
@@ -2109,12 +3144,31 @@
       const passiveBonus = 1 + (game.passive.manaReservoir || 0) * 0.04;
       const relicBonus = 1 + (relicModifiers().maxManaMult || 0);
       const worldweave = (game.active && game.active.worldweaveTimer > 0) ? 2 : 1;
-      return base * roomBonus * passiveBonus * relicBonus * worldweave;
+      const followerBonus = 1 + followerManaBonusPct();
+      return base * roomBonus * passiveBonus * relicBonus * worldweave * followerBonus;
     }
 
     function capMana() {
       const cap = maxMana();
       if (game.mana > cap) game.mana = cap;
+    }
+
+    function maxWards() {
+      const effects = outpostEffects();
+      const bonus = (effects.wardsMax || 0) + staffEffect('wardsMax') + researchEffect('wardsMax') + (artifactModifiers().wardsMax || 0);
+      const base = WARDS_BASE + bonus;
+      const mult = 1 + challengePenalty('wardsMax') + completedChallengeBonus('wardsMax') + challengeReward('wardsMax');
+      return Math.max(20, base * mult);
+    }
+    function wardsRegenPerSecond() {
+      const effects = outpostEffects();
+      let regen = WARDS_REGEN_BASE + (effects.wardsRegen || 0) + staffEffect('wardsRegen');
+      regen *= 1 + glyphBonus('wardsRegen') + dailyBlessingBonus('wardsRegen') + completedChallengeBonus('wardsRegen') + challengeReward('wardsRegen');
+      return Math.max(0, regen);
+    }
+    function capWards() {
+      const cap = maxWards();
+      if ((game.wards || 0) > cap) game.wards = cap;
     }
 
     function maxStamina() {
@@ -2154,6 +3208,7 @@
       const boostHarvest = (game.active && game.active.boostHarvest) ? game.active.boostHarvest : 1;
       let sps = base * boostTD * boostHarvest;
       if (game.ritualBuffEnd && game.ritualBuffEnd > Date.now()) sps *= 2;
+      if (game.ritualWindowBonusEnd && game.ritualWindowBonusEnd > Date.now()) sps *= 1 + (game.ritualWindowBonusPct || 0);
       sps *= towerStrainStaminaMult();
       if ((game.exhaustedUntil || 0) > Date.now()) sps *= 0.5;
       sps *= (1 + (relicModifiers().staminaRegenMult || 0));
@@ -2163,8 +3218,9 @@
     function maxFocus() {
       const paragon = (game.paragonSpent && game.paragonSpent.focus) ? game.paragonSpent.focus * 5 : 0;
       const relicBonus = relicModifiers().maxFocusBonus || 0;
+      const artifactBonus = artifactModifiers().maxFocusBonus || 0;
       const worldweave = (game.active && game.active.worldweaveTimer > 0) ? 2 : 1;
-      return (BASE_FOCUS_MAX + paragon + relicBonus) * worldweave;
+      return (BASE_FOCUS_MAX + paragon + relicBonus + artifactBonus) * worldweave;
     }
 
     function focusIdleSeconds() {
@@ -2205,6 +3261,67 @@
     function capStamina() {
       const cap = maxStamina();
       if (game.stamina > cap) game.stamina = cap;
+    }
+
+    function ensureExpandedDefaults() {
+      if (!game.essence || typeof game.essence !== 'object') game.essence = initialEssence();
+      ESSENCE_TYPES.forEach(t => { if (typeof game.essence[t] !== 'number') game.essence[t] = 0; });
+      if (!game.followers || typeof game.followers !== 'object') game.followers = initialFollowers();
+      if (typeof game.followers.novice !== 'number') game.followers.novice = 0;
+      if (typeof game.followers.acolyte !== 'number') game.followers.acolyte = 0;
+      if (typeof game.followers.sage !== 'number') game.followers.sage = 0;
+      if (typeof game.reputation !== 'number') game.reputation = 0;
+      if (typeof game.gold !== 'number') game.gold = 0;
+      if (typeof game.wards !== 'number') game.wards = WARDS_BASE;
+      if (!game.followerAssignments || typeof game.followerAssignments !== 'object') game.followerAssignments = initialFollowerAssignments();
+      ['market', 'research', 'ritual', 'scouting'].forEach(k => {
+        if (typeof game.followerAssignments[k] !== 'number') game.followerAssignments[k] = 0;
+      });
+      if (typeof game.followerProgress !== 'number') game.followerProgress = 0;
+      if (!game.promotionProgress || typeof game.promotionProgress !== 'object') game.promotionProgress = { novice: 0, acolyte: 0 };
+      if (typeof game.promotionProgress.novice !== 'number') game.promotionProgress.novice = 0;
+      if (typeof game.promotionProgress.acolyte !== 'number') game.promotionProgress.acolyte = 0;
+      if (typeof game.scoutingProgress !== 'number') game.scoutingProgress = 0;
+      if (!Array.isArray(game.academyOutposts)) game.academyOutposts = initialAcademyOutposts();
+      if (game.academyOutposts.length < MAX_OUTPOSTS) {
+        const missing = MAX_OUTPOSTS - game.academyOutposts.length;
+        for (let i = 0; i < missing; i++) game.academyOutposts.push({ built: false, role: null, level: 0, modules: [], links: { left: false, right: false } });
+      }
+      if (!game.academyStaff || typeof game.academyStaff !== 'object') game.academyStaff = initialAcademyStaff();
+      if (!game.research || typeof game.research !== 'object') game.research = initialResearchState();
+      if (!Array.isArray(game.research.unlocked)) game.research.unlocked = [];
+      if (typeof game.research.points !== 'number') game.research.points = 0;
+      if (!game.modules || typeof game.modules !== 'object') game.modules = {};
+      if (!game.schools || typeof game.schools !== 'object') game.schools = { primary: null, secondary: null, slots: 1 };
+      if (typeof game.schools.slots !== 'number') game.schools.slots = 1;
+      if (!game.glyphs || typeof game.glyphs !== 'object') game.glyphs = { active: null };
+      if (!game.challenge || typeof game.challenge !== 'object') game.challenge = { active: null, completed: [], tokens: 0 };
+      if (!Array.isArray(game.challenge.completed)) game.challenge.completed = [];
+      if (typeof game.challenge.tokens !== 'number') game.challenge.tokens = 0;
+      if (!game.encounter || typeof game.encounter !== 'object') game.encounter = initialEncounterState();
+      if (typeof game.encounter.threat !== 'number') game.encounter.threat = 0;
+      if (!Array.isArray(game.contracts)) game.contracts = [];
+      if (!Array.isArray(game.milestonesClaimed)) game.milestonesClaimed = [];
+      if (!Array.isArray(game.storySeen)) game.storySeen = [];
+      if (!game.dailyBlessing || typeof game.dailyBlessing !== 'object') game.dailyBlessing = { date: null, id: null, bonus: null };
+      if (!game.runeEtching || typeof game.runeEtching !== 'object') game.runeEtching = { date: null, pattern: [], selected: [], solvedAt: 0, attempts: 0 };
+      if (typeof game.runeEtchingBuffEnd !== 'number') game.runeEtchingBuffEnd = 0;
+      if (!game.cosmetics || typeof game.cosmetics !== 'object') game.cosmetics = { unlocked: [], active: null };
+      if (!game.spellSynergy || typeof game.spellSynergy !== 'object') game.spellSynergy = { lastElement: null, lastCastAt: 0, chain: [] };
+      if (typeof game.nextFollowerEventAt !== 'number') game.nextFollowerEventAt = 0;
+      if (typeof game.followerEvent === 'undefined') game.followerEvent = null;
+      if (typeof game.ritualWindowBonusPct !== 'number') game.ritualWindowBonusPct = 0;
+      if (typeof game.ritualWindowBonusEnd !== 'number') game.ritualWindowBonusEnd = 0;
+      if (game.active) {
+        if (typeof game.active.overchargeTimer !== 'number') game.active.overchargeTimer = 0;
+        if (typeof game.active.overchargeMult !== 'number') game.active.overchargeMult = 1;
+        if (typeof game.active.concessionTimer !== 'number') game.active.concessionTimer = 0;
+        if (typeof game.active.comboTimer !== 'number') game.active.comboTimer = 0;
+        if (typeof game.active.comboMult !== 'number') game.active.comboMult = 1;
+        if (typeof game.active.overchargeCharge !== 'number') game.active.overchargeCharge = 0;
+        if (typeof game.active.flameSurgeTimer !== 'number') game.active.flameSurgeTimer = 0;
+        if (typeof game.active.frostSlowTimer !== 'number') game.active.frostSlowTimer = 0;
+      }
     }
 
     function timeDilationCost(casts) {
@@ -2252,6 +3369,7 @@
       if (game.active && game.active.leylineTapTimer > 0) m *= (1 + (game.active.leylineTapPct || 0));
       if (game.active && game.active.focusCondenserTimer > 0) m *= 0.8;
       if (game.active && game.active.overclockTimer > 0) m *= (game.active.overclockMult || 5);
+      if (game.active && game.active.flameSurgeTimer > 0) m *= 1.15;
       if (game.active && game.active.paradoxTimer > 0) m *= (2 / 3);
       if (game.ritualBuffEnd && game.ritualBuffEnd > Date.now()) m *= 2;
       const aetherLvl = game.passive.aetherFlux || 0;
@@ -2266,7 +3384,20 @@
       m *= achievementManaMultiplier();
       m *= milestoneManaMultiplier();
       m *= paragonManaMultiplier();
-      m *= (1 + (relicModifiers().manaMult || 0));
+      m *= (1 + (relicModifiers().manaMult || 0) + (artifactModifiers().manaMult || 0));
+      m *= 1 + followerManaPerSecBonus();
+      m *= 1 + (outpostEffects().manaMult || 0);
+      m *= 1 + schoolBonus('manaMult');
+      m *= 1 + glyphBonus('manaMult');
+      m *= 1 + dailyBlessingBonus('manaMult');
+      m *= 1 + challengePenalty('manaMult') + completedChallengeBonus('manaMult');
+      if (game.active && game.active.concessionTimer > 0) m *= 0.94;
+      if (game.ritualWindowBonusEnd && game.ritualWindowBonusEnd > Date.now()) m *= 1 + (game.ritualWindowBonusPct || 0);
+      if (game.active && game.active.overchargeTimer > 0) {
+        const boost = (game.active.overchargeMult || 1) - 1;
+        m *= 1 + boost * 0.3;
+      }
+      m = Math.max(0.05, m);
       return m;
     }
 
@@ -2395,7 +3526,8 @@
     function trySpendManaForSpell(baseCost) {
       const discount = (game.attuneDiscount || 0) + currentSpellCostDiscount();
       const scaledCost = baseCost > 0 ? scaledSpellManaCost(baseCost) : 0;
-      const actualCost = Math.max(0, scaledCost * (1 - Math.min(0.9, discount)));
+      const costMult = Math.max(0.2, 1 + schoolBonus('spellCost') + glyphBonus('spellCost'));
+      const actualCost = Math.max(0, scaledCost * costMult * (1 - Math.min(0.9, discount)));
       const echoLvl = game.passive.spellEcho || 0;
       const now = Date.now();
       if (echoLvl > 0 && (game.spellEchoNextFreeAt || 0) <= now) {
@@ -2409,6 +3541,45 @@
       game.mana -= actualCost;
       game.attuneDiscount = 0;
       return true;
+    }
+
+    function registerSpellElement(element) {
+      if (!element) return;
+      if (!game.spellSynergy || typeof game.spellSynergy !== 'object') game.spellSynergy = { lastElement: null, lastCastAt: 0, chain: [] };
+      const now = Date.now();
+      const lastAt = game.spellSynergy.lastCastAt || 0;
+      if (now - lastAt > 8000) game.spellSynergy.lastElement = null;
+      const last = game.spellSynergy.lastElement;
+      let combo = null;
+      if (last === 'frost' && element === 'lightning') combo = 'shatter';
+      if (last === 'fire' && element === 'frost') combo = 'thermal';
+      if (last === 'lightning' && element === 'fire') combo = 'stormflare';
+      if (combo) triggerSpellCombo(combo);
+      game.spellSynergy.lastElement = element;
+      game.spellSynergy.lastCastAt = now;
+    }
+    function triggerSpellCombo(combo) {
+      if (combo === 'shatter') {
+        if (game.encounter && game.encounter.active) {
+          game.encounter.hp = Math.max(0, game.encounter.hp - game.encounter.maxHp * 0.12);
+        } else {
+          const gain = manaPerSecond() * 3;
+          game.mana = Math.min((game.mana || 0) + gain, maxMana());
+          game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
+        }
+        showToast('Combo: Shatter Burst', 'Frost shattered by lightning.');
+      }
+      if (combo === 'thermal') {
+        game.active.comboTimer = 12;
+        game.active.comboMult = 1.18;
+        showToast('Combo: Thermal Shock', '+18% spell power for 12s.');
+      }
+      if (combo === 'stormflare') {
+        const focusGain = 12;
+        game.focus = Math.min((game.focus || 0) + focusGain, maxFocus());
+        gainEssence('lightning', 2);
+        showToast('Combo: Stormflare', '+12 focus and lightning essence.');
+      }
     }
 
     // -------------------- ACTIVE SPELLS --------------------
@@ -2464,7 +3635,7 @@
           recordActivityOrSpell();
           game.stats.timeDilationCasts = casts + 1;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
-          const mult = spellEffectMultiplier() * activeEffectMultiplier();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier() * elementalSpellMultiplier('frost');
           const durMult = activeDurationMultiplier();
           game.active.boostTD = 3 * mult;
           game.active.duration = 10 * mult * durMult;
@@ -2489,7 +3660,7 @@
           const cost = 120;
           if (!trySpendManaForSpell(cost)) return;
           recordActivityOrSpell();
-          const mult = spellEffectMultiplier() * activeEffectMultiplier();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier() * elementalSpellMultiplier('lightning');
           const gain = manaPerSecond() * 5 * mult;
           game.mana = Math.min(game.mana + gain, maxMana());
           game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
@@ -2498,6 +3669,83 @@
           playSound('spell');
         },
         costText: () => 'Cost ' + formatNum(scaledSpellManaCost(120)) + ' mana, 10 focus · Cooldown 8s',
+      },
+      {
+        id: 'frostBolt',
+        name: 'Frost Bolt',
+        unlockCheck: () => totalFloors() >= 18 && researchFlag('unlockElements'),
+        unlockText: () => 'Unlocks at 18 floors + Elemental Studies',
+        focusCost: 10,
+        desc: 'Chill waves or restore wards. Combos with Lightning.',
+        effect: () => {
+          if (!trySpendFocus(10)) return;
+          const cost = 320;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier() * elementalSpellMultiplier('fire');
+          if (game.encounter && game.encounter.active) {
+            game.encounter.timer += 3 * mult;
+            game.active.frostSlowTimer = Math.max(game.active.frostSlowTimer || 0, 8 * mult);
+          } else {
+            game.wards = Math.min((game.wards || 0) + 15 * mult, maxWards());
+          }
+          registerSpellElement('frost');
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          playSound('spell');
+        },
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(320)) + ' mana, 10 focus',
+      },
+      {
+        id: 'lightningArc',
+        name: 'Lightning Arc',
+        unlockCheck: () => totalFloors() >= 20 && researchFlag('unlockElements'),
+        unlockText: () => 'Unlocks at 20 floors + Elemental Studies',
+        focusCost: 12,
+        desc: 'Burst damage or mana surge. Combos with Frost.',
+        effect: () => {
+          if (!trySpendFocus(12)) return;
+          const cost = 360;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
+          if (game.encounter && game.encounter.active) {
+            game.encounter.hp = Math.max(0, game.encounter.hp - game.encounter.maxHp * 0.08 * mult);
+          } else {
+            const gain = manaPerSecond() * 2.5 * mult;
+            game.mana = Math.min((game.mana || 0) + gain, maxMana());
+            game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
+          }
+          registerSpellElement('lightning');
+          gainEssence('lightning', 1);
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          playSound('spell');
+        },
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(360)) + ' mana, 12 focus',
+      },
+      {
+        id: 'flameSurge',
+        name: 'Flame Surge',
+        unlockCheck: () => totalFloors() >= 22 && researchFlag('unlockElements'),
+        unlockText: () => 'Unlocks at 22 floors + Elemental Studies',
+        focusCost: 12,
+        desc: 'Ignites output for a short time. Combos with Frost.',
+        effect: () => {
+          if (!trySpendFocus(12)) return;
+          const cost = 380;
+          if (!trySpendManaForSpell(cost)) return;
+          recordActivityOrSpell();
+          const mult = spellEffectMultiplier() * activeEffectMultiplier();
+          if (game.encounter && game.encounter.active) {
+            game.encounter.hp = Math.max(0, game.encounter.hp - game.encounter.maxHp * 0.06 * mult);
+          } else {
+            game.active.flameSurgeTimer = Math.max(game.active.flameSurgeTimer || 0, 10 * mult);
+          }
+          registerSpellElement('fire');
+          gainEssence('fire', 1);
+          game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          playSound('spell');
+        },
+        costText: () => 'Cost ' + formatNum(scaledSpellManaCost(380)) + ' mana, 12 focus',
       },
       {
         id: 'runeAccretion',
@@ -2690,8 +3938,13 @@
           game.ritualOfBindingCooldownEnd = Date.now() + RITUAL_OF_BINDING_COOLDOWN_MS;
           game.ritualOfBindingNextSwapHalved = true;
           game.stats.totalSpellsCast = (game.stats.totalSpellsCast || 0) + 1;
+          const windowMult = ritualWindowMultiplier();
+          if (windowMult > 1) {
+            const reduce = SPELL_SWAP_COOLDOWN_MS * 0.25;
+            game.spellSwapCooldownEnd = Math.max(Date.now(), (game.spellSwapCooldownEnd || Date.now()) - reduce);
+          }
           playSound('spell');
-          showToast('Ritual of Binding', 'Next Memorize/Forget will have 50% shorter cooldown.');
+          showToast('Ritual of Binding', windowMult > 1 ? 'Ritual window! Swap cooldown shortened further.' : 'Next Memorize/Forget will have 50% shorter cooldown.');
         },
         costText: () => 'Cost ' + formatNum(scaledSpellManaCost(800)) + ' mana, 30 focus',
       },
@@ -3137,10 +4390,18 @@
           recordActivityOrSpell();
           setExhausted();
           game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          game.ritualBuffEnd = Date.now() + 60 * 1000 * ritualDurationMultiplier();
+          const windowMult = ritualWindowMultiplier();
+          game.ritualBuffEnd = Date.now() + 60 * 1000 * ritualDurationMultiplier() * windowMult;
+          if (windowMult > 1) {
+            game.ritualWindowBonusPct = windowMult - 1;
+            game.ritualWindowBonusEnd = game.ritualBuffEnd;
+          } else {
+            game.ritualWindowBonusPct = 0;
+            game.ritualWindowBonusEnd = 0;
+          }
           game.ritualActivityCooldownEnd = Date.now() + RITUAL_ACTIVITY_COOLDOWN_MS;
           playSound('spell');
-          showToast('Ritual', '2× all gains for 60s.');
+          showToast('Ritual', windowMult > 1 ? 'Ritual window! Bonus amplified.' : '2× all gains for 60s.');
         },
         costText: () => 'Cost ' + Math.round(80 * ritualCostMultiplier()) + '% max stamina, 25 focus',
       },
@@ -3197,7 +4458,348 @@
         },
         costText: () => 'Cost 15% max stamina (' + formatNum(Math.floor(maxStamina() * 0.15)) + ')',
       },
+      {
+        id: 'recruitFollowers',
+        name: 'Recruit Followers',
+        desc: 'Gain new followers scaled by reputation.',
+        unlockFloors: 12,
+        costStaminaPct: 0.25,
+        focusCost: 8,
+        effect: () => {
+          if (!trySpendFocus(8)) return;
+          const cost = maxStamina() * 0.25;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          const gain = Math.max(2, Math.floor(2 + (game.reputation || 0) * 0.08));
+          gainFollowers(gain);
+          adjustReputation(1);
+          playSound('spell');
+        },
+        costText: () => 'Cost 25% max stamina, 8 focus',
+      },
+      {
+        id: 'communitySermon',
+        name: 'Community Sermon',
+        desc: 'Boost reputation and follower morale.',
+        unlockFloors: 18,
+        costStaminaPct: 0.20,
+        effect: () => {
+          const cost = maxStamina() * 0.20;
+          if (game.stamina < cost) return;
+          game.stamina -= cost;
+          recordActivityOrSpell();
+          adjustReputation(4);
+          if (Math.random() < 0.5) gainFollowers(1);
+          playSound('spell');
+        },
+        costText: () => 'Cost 20% max stamina (' + formatNum(Math.floor(maxStamina() * 0.20)) + ')',
+      },
     ];
+
+    // -------------------- ACADEMY / EXPANSION DATA --------------------
+    const OUTPOST_ROLES = [
+      { id: 'ward', name: 'Ward', desc: 'Boost ward integrity and regeneration.', effects: { wardsMax: 14, wardsRegen: 0.04 } },
+      { id: 'research', name: 'Research', desc: 'Increase research point gain.', effects: { research: 0.035 } },
+      { id: 'summoning', name: 'Summoning', desc: 'Grow your follower base faster.', effects: { followers: 0.02 } },
+      { id: 'amplification', name: 'Amplification', desc: 'Increase mana/sec output.', effects: { manaMult: 0.02 } },
+    ];
+    const STAFF = [
+      { id: 'archivist', name: 'Archivist Lysa', cost: { gold: 120, essence: { arcane: 8 } }, upkeep: 4, desc: '+Research gain, faster rune etching.', effects: { research: 0.02, rune: 0.15 } },
+      { id: 'warden', name: 'Wardkeeper Bram', cost: { gold: 140, essence: { fire: 6 } }, upkeep: 5, desc: '+Ward regen and max wards.', effects: { wardsMax: 18, wardsRegen: 0.06 } },
+      { id: 'summoner', name: 'Summoner Orel', cost: { gold: 160, essence: { lightning: 6 } }, upkeep: 6, desc: '+Follower growth and promotions.', effects: { followers: 0.03, promotion: 0.25 } },
+      { id: 'broker', name: 'Broker Anya', cost: { gold: 180, essence: { astral: 5 } }, upkeep: 6, desc: '+Gold income, better market trades.', effects: { gold: 0.08, market: 0.15 } },
+    ];
+    const SCHOOLS = [
+      { id: 'arcane', name: 'Arcane', desc: 'Balanced mastery. +5% mana/sec and +5% spell effect.', bonuses: { manaMult: 0.05, spellEffect: 0.05 }, essence: 'arcane' },
+      { id: 'frost', name: 'Frost', desc: 'Control and efficiency. -8% spell cost, slows encounters.', bonuses: { spellCost: -0.08, slow: 0.2 }, essence: 'frost' },
+      { id: 'fire', name: 'Fire', desc: 'Burn bright. +10% mana/sec, overcharge lasts longer.', bonuses: { manaMult: 0.10, overcharge: 0.2 }, essence: 'fire' },
+      { id: 'lightning', name: 'Lightning', desc: 'Burst combos. +10% spell effect, +combo potency.', bonuses: { spellEffect: 0.10, combo: 0.25 }, essence: 'lightning' },
+      { id: 'astral', name: 'Astral', desc: 'Patience and foresight. +12% focus regen, +ritual duration.', bonuses: { focusRegen: 0.12, ritualDuration: 0.10 }, essence: 'astral' },
+    ];
+    const GLYPHS = [
+      { id: 'hunger', name: 'Glyph of Hunger', desc: '+15% spell effect, -10% mana/sec, overcharge drains +20% wards.', mods: { spellEffect: 0.15, manaMult: -0.10, overchargeDrain: 0.20 } },
+      { id: 'thorns', name: 'Glyph of Thorns', desc: '+20% ward regen, encounters deal +15% damage.', mods: { wardsRegen: 0.20, enemyDamage: 0.15 } },
+      { id: 'echoes', name: 'Glyph of Echoes', desc: '+12% mana/sec, spells cost +15% mana.', mods: { manaMult: 0.12, spellCost: 0.15 } },
+    ];
+    const MODULES = [
+      { id: 'rangeLens', name: 'Range Lens', desc: '+8% encounter damage.', effects: { encounterDamage: 0.08 } },
+      { id: 'frostMatrix', name: 'Frost Matrix', desc: '+20% slow strength on encounters.', effects: { slow: 0.20 } },
+      { id: 'stunCoil', name: 'Stun Coil', desc: '5% chance to stun waves (halve enemy damage).', effects: { stun: 0.05 } },
+      { id: 'elementalCore', name: 'Elemental Core', desc: '+12% elemental essence drops.', effects: { essenceDrop: 0.12 } },
+    ];
+    const CRAFTING_RECIPES = [
+      {
+        id: 'manaTonic',
+        name: 'Mana Tonic',
+        desc: 'Gain 25% of max mana instantly.',
+        cost: { gold: 30, essence: { arcane: 8 } },
+        effect: () => {
+          const gain = maxMana() * 0.25;
+          game.mana = Math.min((game.mana || 0) + gain, maxMana());
+          game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
+        },
+      },
+      {
+        id: 'wardSalve',
+        name: 'Ward Salve',
+        desc: 'Restore 40 wards.',
+        cost: { gold: 35, essence: { fire: 6 } },
+        effect: () => { game.wards = Math.min((game.wards || 0) + 40, maxWards()); },
+      },
+      {
+        id: 'focusDraught',
+        name: 'Focus Draught',
+        desc: 'Restore 30 focus.',
+        cost: { gold: 25, essence: { astral: 6 } },
+        effect: () => { game.focus = Math.min((game.focus || 0) + 30, maxFocus()); },
+      },
+      {
+        id: 'forgeModule',
+        name: 'Forge Module',
+        desc: 'Craft a random tower module.',
+        cost: { gold: 60, essence: { arcane: 6, lightning: 4 } },
+        effect: () => {
+          const mod = MODULES[Math.floor(Math.random() * MODULES.length)];
+          addModule(mod.id, 1);
+        },
+      },
+    ];
+    const RESEARCH_NODES = [
+      { id: 'academyRoots', name: 'Academy Roots', cost: 8, desc: 'Unlock basic academy logistics. +5% research gain.', effects: { research: 0.05 } },
+      { id: 'elementalStudies', name: 'Elemental Studies', cost: 12, desc: 'Unlock Frost/Fire/Lightning spells and essence.', effects: { unlockElements: true } },
+      { id: 'modularTowers', name: 'Modular Towers', cost: 14, desc: '+1 module slot per outpost.', effects: { moduleSlots: 1 } },
+      { id: 'ritualCalendars', name: 'Ritual Calendars', cost: 10, desc: '+15% ritual window bonus.', effects: { ritualWindow: 0.15 } },
+      { id: 'summonerPacts', name: 'Summoner Pacts', cost: 12, desc: '+12% follower growth.', effects: { followers: 0.12 } },
+      { id: 'archivalWards', name: 'Archival Wards', cost: 16, desc: '+25 max wards.', effects: { wardsMax: 25 } },
+      { id: 'leylineRelay', name: 'Leyline Relay', cost: 18, desc: '+6% outpost bonuses per active link.', effects: { linkBoost: 0.06 } },
+      { id: 'combatScriptures', name: 'Combat Scriptures', cost: 20, desc: '+10% encounter damage and unlock contracts.', effects: { encounterDamage: 0.10, unlockContracts: true } },
+    ];
+    const ENEMY_TYPES = [
+      { id: 'manaLeech', name: 'Mana Leech', desc: 'Stronger when your mana is high.', highMana: { enemyDamage: 0.25, playerDamage: -0.10 } },
+      { id: 'duskStrider', name: 'Dusk Strider', desc: 'Weakened when your mana is low.', lowMana: { playerDamage: 0.20 } },
+      { id: 'voidWarden', name: 'Void Warden', desc: 'Drains wards when overcharged.', overcharge: { enemyDamage: 0.15 } },
+      { id: 'mirrorShade', name: 'Mirror Shade', desc: 'Reflects burst damage; steadier output preferred.', steady: { playerDamage: -0.08 } },
+    ];
+    const WAVE_MODIFIERS = [
+      { id: 'swarm', name: 'Swarm', desc: 'Lower HP, faster waves.', hpMult: 0.75, speedMult: 1.25, rewardMult: 1.05 },
+      { id: 'shielded', name: 'Shielded', desc: 'Higher HP, reduced player damage.', hpMult: 1.35, playerDamage: -0.12, rewardMult: 1.1 },
+      { id: 'fast', name: 'Fast', desc: 'Waves resolve quickly but hit harder.', speedMult: 1.4, enemyDamage: 0.18, rewardMult: 1.08 },
+      { id: 'rifted', name: 'Rifted', desc: 'Unstable reality boosts essence drops.', essenceDrop: 0.2, rewardMult: 1.12 },
+    ];
+    const CONTRACT_TEMPLATES = [
+      { id: 'swiftClear', name: 'Swift Clear', desc: 'Clear 2 waves in 90s.', type: 'waves', target: 2, duration: 90, reward: { gold: 60, essence: { arcane: 6 } } },
+      { id: 'lowMana', name: 'Humble Focus', desc: 'Clear a wave with mana below 40%.', type: 'manaLimit', target: 1, duration: 120, reward: { gold: 40, essence: { astral: 4 } } },
+      { id: 'wardHold', name: 'Ward Hold', desc: 'Survive 70s without dropping below 40% wards.', type: 'wardHold', target: 70, duration: 100, reward: { gold: 55, essence: { fire: 4 } } },
+    ];
+    const FOLLOWER_EVENTS = [
+      {
+        id: 'festival',
+        title: 'Festival of Embers',
+        text: 'Your followers wish to host a festival. It could inspire devotion or drain supplies.',
+        options: [
+          { label: 'Fund the festival (-80 gold, +8 rep)', effect: () => { spendGold(80); adjustReputation(8); gainFollowers(8); } },
+          { label: 'Keep it modest (+2 rep)', effect: () => { adjustReputation(2); gainFollowers(3); } },
+        ],
+      },
+      {
+        id: 'rebellion',
+        title: 'Whispers of Rebellion',
+        text: 'A faction protests your demands. Their loyalty wavers.',
+        options: [
+          { label: 'Offer concessions (-6% mana/sec for 3m, +10 rep)', effect: () => { adjustReputation(10); game.active.concessionTimer = 180; } },
+          { label: 'Hold your ground (-12 followers, -6 rep)', effect: () => { loseFollowers(12); adjustReputation(-6); } },
+        ],
+      },
+      {
+        id: 'pilgrimage',
+        title: 'Pilgrimage Request',
+        text: 'A group asks to pilgrimage. Bless them for favor or redirect them to work.',
+        options: [
+          { label: 'Bless them (+essence, +rep)', effect: () => { gainEssence('astral', 6); adjustReputation(6); } },
+          { label: 'Redirect to labor (+gold, -rep)', effect: () => { gainGold(70); adjustReputation(-4); } },
+        ],
+      },
+    ];
+    const STORY_ENTRIES = [
+      { id: 'entry1', title: 'Foundations of the Nexus', unlock: g => totalFloorsFromGame(g) >= 5, text: 'You chart the first leyline fractures. The tower hums with newborn intent.' },
+      { id: 'entry2', title: 'Voices in the Atrium', unlock: g => totalFollowersFromGame(g) >= 20, text: 'New voices arrive, chanting in unison. Power now has a chorus.' },
+      { id: 'entry3', title: 'The Academy Charter', unlock: g => totalFollowersFromGame(g) >= FOLLOWER_THRESHOLDS.academy, text: 'With followers gathered, you draft the charter of the Mage Academy.' },
+      { id: 'entry4', title: 'Starlit Observations', unlock: g => totalFollowersFromGame(g) >= FOLLOWER_THRESHOLDS.observatory, text: 'The skies answer. The Observatory reveals shifting patterns.' },
+      { id: 'entry5', title: 'Echoes of Ascension', unlock: g => (g.ascension || 0) >= 1, text: 'You step beyond mortal pacing. The echo remains.' },
+    ];
+    const ARTIFACTS = [
+      { id: 'emberLens', name: 'Ember Lens', desc: '+4% mana/sec.', unlock: g => totalFloorsFromGame(g) >= 20, mods: { manaMult: 0.04 } },
+      { id: 'quietBell', name: 'Quiet Bell', desc: '+8 max focus.', unlock: g => totalFollowersFromGame(g) >= 30, mods: { maxFocusBonus: 8 } },
+      { id: 'wardSigil', name: 'Ward Sigil', desc: '+12 max wards.', unlock: g => totalFloorsFromGame(g) >= 45, mods: { wardsMax: 12 } },
+    ];
+    const DAILY_BLESSINGS = [
+      { id: 'calm', name: 'Calm Currents', desc: '+6% mana/sec today.', mods: { manaMult: 0.06 } },
+      { id: 'vigil', name: 'Vigil of Wards', desc: '+18% ward regen today.', mods: { wardsRegen: 0.18 } },
+      { id: 'insight', name: 'Insight Bloom', desc: '+12% research gain today.', mods: { research: 0.12 } },
+      { id: 'unity', name: 'Unity Chorus', desc: '+8% follower growth today.', mods: { followers: 0.08 } },
+    ];
+    const RUNE_SYMBOLS = ['Runic A', 'Runic B', 'Runic C', 'Runic D', 'Runic E', 'Runic F'];
+    const COSMETIC_UPGRADES = [
+      { id: 'sheen1', name: 'Leyline Sheen', unlock: g => totalFloorsFromGame(g) >= 25, desc: 'Add a soft glow to the tower blocks.', className: 'cosmetic-sheen' },
+      { id: 'sheen2', name: 'Astral Halo', unlock: g => totalFollowersFromGame(g) >= 60, desc: 'Mana windows shimmer with astral hue.', className: 'cosmetic-sheen' },
+    ];
+    const ASCENSION_CHALLENGES = [
+      { id: 'manaDrought', name: 'Mana Drought', desc: '-25% mana/sec, +12% essence drops.', penalties: { manaMult: -0.25 }, rewards: { essenceDrop: 0.12 } },
+      { id: 'thinWards', name: 'Thin Wards', desc: '-25% max wards, +15% research.', penalties: { wardsMax: -0.25 }, rewards: { research: 0.15 } },
+      { id: 'focusStrain', name: 'Focus Strain', desc: '-20% focus regen, +10% spell effect.', penalties: { focusRegen: -0.20 }, rewards: { spellEffect: 0.10 } },
+    ];
+
+    function getSchoolById(id) { return SCHOOLS.find(s => s.id === id); }
+    function selectedSchools() {
+      const list = [];
+      if (game.schools && game.schools.primary) list.push(game.schools.primary);
+      if (game.schools && game.schools.secondary && game.schools.secondary !== game.schools.primary) list.push(game.schools.secondary);
+      return list;
+    }
+    function schoolBonus(key) {
+      let total = 0;
+      selectedSchools().forEach(id => {
+        const s = getSchoolById(id);
+        if (!s || !s.bonuses) return;
+        const val = s.bonuses[key];
+        if (typeof val === 'number') total += val;
+      });
+      return total;
+    }
+    function activeGlyph() {
+      const id = game.glyphs && game.glyphs.active;
+      return GLYPHS.find(g => g.id === id) || null;
+    }
+    function glyphBonus(key) {
+      const g = activeGlyph();
+      if (!g || !g.mods) return 0;
+      const val = g.mods[key];
+      return typeof val === 'number' ? val : 0;
+    }
+    function isResearchUnlocked(id) {
+      return !!(game.research && Array.isArray(game.research.unlocked) && game.research.unlocked.includes(id));
+    }
+    function researchEffect(key) {
+      let total = 0;
+      RESEARCH_NODES.forEach(n => {
+        if (!isResearchUnlocked(n.id)) return;
+        const val = n.effects ? n.effects[key] : null;
+        if (typeof val === 'number') total += val;
+      });
+      return total;
+    }
+    function researchFlag(key) {
+      return RESEARCH_NODES.some(n => isResearchUnlocked(n.id) && n.effects && n.effects[key]);
+    }
+    function unlockResearchNode(id) {
+      const node = RESEARCH_NODES.find(n => n.id === id);
+      if (!node || isResearchUnlocked(id)) return;
+      const cost = node.cost || 0;
+      if ((game.research && game.research.points || 0) < cost) return;
+      game.research.points -= cost;
+      game.research.unlocked = [...(game.research.unlocked || []), id];
+      showToast('Research complete', node.name + ' unlocked.');
+    }
+    function getStaffState(id) {
+      if (!game.academyStaff || typeof game.academyStaff !== 'object') game.academyStaff = {};
+      if (!game.academyStaff[id]) game.academyStaff[id] = { hired: false, happiness: 60 };
+      if (typeof game.academyStaff[id].happiness !== 'number') game.academyStaff[id].happiness = 60;
+      if (typeof game.academyStaff[id].hired !== 'boolean') game.academyStaff[id].hired = false;
+      return game.academyStaff[id];
+    }
+    function staffHappinessMultiplier(h) {
+      const clamped = Math.max(0, Math.min(100, h));
+      return 0.5 + (clamped / 100);
+    }
+    function staffEffect(key) {
+      let total = 0;
+      STAFF.forEach(s => {
+        const st = getStaffState(s.id);
+        if (!st.hired) return;
+        const mult = staffHappinessMultiplier(st.happiness || 60);
+        const val = s.effects ? s.effects[key] : 0;
+        if (typeof val === 'number') total += val * mult;
+      });
+      return total;
+    }
+    function staffUpkeepPerMin() {
+      let total = 0;
+      STAFF.forEach(s => {
+        const st = getStaffState(s.id);
+        if (!st.hired) return;
+        total += s.upkeep || 0;
+      });
+      return total;
+    }
+    function hireStaff(id) {
+      const staff = STAFF.find(s => s.id === id);
+      if (!staff) return;
+      const st = getStaffState(id);
+      if (st.hired) return;
+      if (!payCost(staff.cost)) return;
+      st.hired = true;
+      st.happiness = Math.max(50, st.happiness || 60);
+      showToast('Staff hired', staff.name + ' joins the academy.');
+    }
+    function treatStaff(id) {
+      const st = getStaffState(id);
+      if (!st.hired) return;
+      const cost = 30;
+      if (!spendGold(cost)) return;
+      st.happiness = Math.min(100, (st.happiness || 60) + 12);
+    }
+    function outpostLinkCount() {
+      const outposts = game.academyOutposts || [];
+      let links = 0;
+      for (let i = 0; i < outposts.length - 1; i++) {
+        const left = outposts[i];
+        const right = outposts[i + 1];
+        if (!left || !right || !left.built || !right.built) continue;
+        if (left.links && right.links && left.links.right && right.links.left) links++;
+      }
+      return links;
+    }
+    function outpostLinkMultiplier() {
+      const links = outpostLinkCount();
+      const base = 0.04;
+      const extra = researchEffect('linkBoost');
+      return 1 + links * (base + extra);
+    }
+    function moduleEffects() {
+      const effects = {};
+      const outposts = game.academyOutposts || [];
+      outposts.forEach(o => {
+        if (!o || !o.built || !Array.isArray(o.modules)) return;
+        o.modules.forEach(id => {
+          const mod = MODULES.find(m => m.id === id);
+          if (!mod || !mod.effects) return;
+          Object.keys(mod.effects).forEach(k => {
+            effects[k] = (effects[k] || 0) + mod.effects[k];
+          });
+        });
+      });
+      return effects;
+    }
+    function outpostEffects() {
+      const effects = { wardsMax: 0, wardsRegen: 0, research: 0, followers: 0, manaMult: 0 };
+      const outposts = game.academyOutposts || [];
+      const linkMult = outpostLinkMultiplier();
+      outposts.forEach(o => {
+        if (!o || !o.built || !o.role) return;
+        const role = OUTPOST_ROLES.find(r => r.id === o.role);
+        if (!role) return;
+        const level = Math.max(1, o.level || 1);
+        Object.keys(role.effects || {}).forEach(k => {
+          effects[k] = (effects[k] || 0) + role.effects[k] * level * linkMult;
+        });
+      });
+      const mods = moduleEffects();
+      Object.keys(mods).forEach(k => {
+        effects[k] = (effects[k] || 0) + mods[k];
+      });
+      return effects;
+    }
 
     // -------------------- RELICS --------------------
     function availableRelics() {
@@ -3281,7 +4883,7 @@
     }
 
     // -------------------- RENDER --------------------
-    function renderAll() { renderUI(); renderSpells(); renderTower(); renderActivities(); renderRelicsPanel(); }
+    function renderAll() { renderUI(); renderSpells(); renderTower(); renderActivities(); renderRelicsPanel(); renderAcademy(); renderLibrary(); renderObservatory(); }
 
     function clearTutorialLayer() {
       if (!tutorialLayer) return;
@@ -3499,6 +5101,15 @@
       // Ascension: can ascend now
       setTabBadge('ascensionModal', totalFloors() >= ASCENSION_FLOOR);
       setTabBadge('relicsModal', Array.isArray(game.relicDraft) && game.relicDraft.length > 0);
+      const outposts = game.academyOutposts || [];
+      const canBuildOutpost = outposts.some((o, i) => !o.built && canAffordCost(outpostBuildCost(i)));
+      const canUpgradeOutpost = outposts.some(o => o && o.built && canAffordCost(outpostUpgradeCost(o.level || 1)));
+      const canHire = STAFF.some(s => !getStaffState(s.id).hired && canAffordCost(s.cost));
+      setTabBadge('academyModal', canBuildOutpost || canUpgradeOutpost || canHire || availableFollowers() > 0);
+      const canResearch = RESEARCH_NODES.some(n => !isResearchUnlocked(n.id) && (game.research && game.research.points || 0) >= n.cost);
+      setTabBadge('libraryModal', canResearch);
+      const contractComplete = Array.isArray(game.contracts) && game.contracts.some(c => c.complete && !c.claimed);
+      setTabBadge('observatoryModal', contractComplete || !(game.encounter && game.encounter.active));
     }
 
     function renderUI() {
@@ -3521,6 +5132,20 @@
       updateResourceFullState(manaBlock, game.mana, maxMana());
       updateResourceFullState(staminaBlock, game.stamina, maxStamina());
       updateResourceFullState(focusBlock, game.focus || 0, maxFocus());
+      if (followersTotalEl) followersTotalEl.textContent = totalFollowers();
+      if (reputationEl) reputationEl.textContent = Math.round(game.reputation || 0);
+      if (goldEl) goldEl.textContent = formatNum(game.gold || 0);
+      if (goldUpkeepEl) goldUpkeepEl.textContent = (staffUpkeepPerMin() || 0).toFixed(1);
+      if (wardsEl) wardsEl.textContent = Math.round(game.wards || 0);
+      if (wardsMaxEl) wardsMaxEl.textContent = Math.round(maxWards());
+      if (wardsPerSecEl) wardsPerSecEl.textContent = wardsRegenPerSecond().toFixed(2);
+      if (essenceTotalEl) {
+        const totalEssence = ESSENCE_TYPES.reduce((sum, t) => sum + (game.essence && game.essence[t] || 0), 0);
+        essenceTotalEl.textContent = formatNum(totalEssence);
+      }
+      if (essenceBreakdownEl) {
+        essenceBreakdownEl.textContent = ESSENCE_TYPES.map(t => t[0].toUpperCase() + t.slice(1) + ' ' + Math.floor(game.essence && game.essence[t] || 0)).join(' · ');
+      }
       const exhaustedEnd = game.exhaustedUntil || 0;
       if (exhaustedHint) {
         if (exhaustedEnd > Date.now()) {
@@ -3608,6 +5233,17 @@
       ascendBtn.onclick = () => {
         if (totalFloors() < ASCENSION_FLOOR) return;
         if (!confirm('Ascend? This resets prestige, soft prestige, floors, and rooms. You keep ascension bonus. Continue?')) return;
+        const keptFollowers = { ...(game.followers || initialFollowers()) };
+        const keptReputation = game.reputation || 0;
+        const keptOutposts = game.academyOutposts || initialAcademyOutposts();
+        const keptStaff = game.academyStaff || initialAcademyStaff();
+        const keptResearch = game.research || initialResearchState();
+        const keptModules = game.modules || {};
+        const keptSchools = game.schools || { primary: null, secondary: null, slots: 1 };
+        const keptGold = game.gold || 0;
+        const keptEssence = game.essence || initialEssence();
+        const keptChallenge = game.challenge || { active: null, completed: [], tokens: 0 };
+        const keptCosmetics = game.cosmetics || { unlocked: [], active: null };
         const savedMana = game.wardOfPreservationUsed ? game.mana * 0.05 : 0;
         const hallLvl = countRooms('Hall of Preservation');
         const savedFloorsKept = hallLvl >= 1 ? Math.floor(totalFloors() * PRESTIGE_KEEP_FLOORS_PCT) : 0;
@@ -3644,6 +5280,14 @@
           worldweaveTimer: 0,
           convergenceTimer: 0,
           paradoxTimer: 0,
+          overchargeTimer: 0,
+          overchargeMult: 1,
+          concessionTimer: 0,
+          comboTimer: 0,
+          comboMult: 1,
+          overchargeCharge: 0,
+          flameSurgeTimer: 0,
+          frostSlowTimer: 0,
         };
         game.studyCount = 0;
         game.stamina = maxStamina();
@@ -3651,6 +5295,8 @@
         game.meditateStacks = 0;
         game.scryLockedRoom = null;
         game.ritualBuffEnd = 0;
+        game.ritualWindowBonusPct = 0;
+        game.ritualWindowBonusEnd = 0;
         game.attuneDiscount = 0;
         game.relics = [];
         game.relicDraft = [];
@@ -3676,6 +5322,28 @@
         game.stats.focusSurgeCasts = 0;
         game.stats.vigorInfusionCasts = 0;
         game.stats.transmutateCasts = 0;
+        game.runeEtchingBuffEnd = 0;
+        game.followers = keptFollowers;
+        game.reputation = keptReputation;
+        game.academyOutposts = keptOutposts;
+        game.academyStaff = keptStaff;
+        game.research = keptResearch;
+        game.modules = keptModules;
+        game.gold = keptGold;
+        game.essence = keptEssence;
+        game.challenge = keptChallenge;
+        game.cosmetics = keptCosmetics;
+        game.schools = keptSchools;
+        if (game.schools) game.schools.slots = Math.min(2, (game.schools.slots || 1) + 1);
+        game.followerAssignments = initialFollowerAssignments();
+        game.followerProgress = 0;
+        game.promotionProgress = { novice: 0, acolyte: 0 };
+        game.scoutingProgress = 0;
+        game.wards = maxWards();
+        game.encounter = initialEncounterState();
+        game.contracts = [];
+        game.followerEvent = null;
+        game.nextFollowerEventAt = 0;
         renderAll();
         playSound('milestone');
       };
@@ -3731,6 +5399,34 @@
         } else {
           relicTab.classList.add('tab-locked');
           relicTab.title = 'Unlocks after claiming your first relic';
+        }
+      }
+      const followerTotal = totalFollowers();
+      if (academyTab) {
+        if (followerTotal >= FOLLOWER_THRESHOLDS.academy) {
+          academyTab.classList.remove('tab-locked');
+          academyTab.title = 'Academy';
+        } else {
+          academyTab.classList.add('tab-locked');
+          academyTab.title = 'Unlocks at ' + FOLLOWER_THRESHOLDS.academy + ' followers';
+        }
+      }
+      if (libraryTab) {
+        if (followerTotal >= FOLLOWER_THRESHOLDS.library) {
+          libraryTab.classList.remove('tab-locked');
+          libraryTab.title = 'Library';
+        } else {
+          libraryTab.classList.add('tab-locked');
+          libraryTab.title = 'Unlocks at ' + FOLLOWER_THRESHOLDS.library + ' followers';
+        }
+      }
+      if (observatoryTab) {
+        if (followerTotal >= FOLLOWER_THRESHOLDS.observatory) {
+          observatoryTab.classList.remove('tab-locked');
+          observatoryTab.title = 'Observatory';
+        } else {
+          observatoryTab.classList.add('tab-locked');
+          observatoryTab.title = 'Unlocks at ' + FOLLOWER_THRESHOLDS.observatory + ' followers';
         }
       }
 
@@ -3825,6 +5521,462 @@
           btn.appendChild(hint);
         }
         activitiesDiv.appendChild(btn);
+      });
+    }
+
+    function renderAcademy() {
+      if (!academySummary || !outpostList || !staffList || !marketPanel || !moduleInventory) return;
+      const f = game.followers || {};
+      const total = totalFollowers();
+      const linkCount = outpostLinkCount();
+      academySummary.innerHTML =
+        '<div>Followers: ' + total + ' (Novice ' + (f.novice || 0) + ', Acolyte ' + (f.acolyte || 0) + ', Sage ' + (f.sage || 0) + ')</div>' +
+        '<div class="cost">Reputation: ' + Math.round(game.reputation || 0) + '% · Leyline links: ' + linkCount + '</div>';
+
+      outpostList.innerHTML = '';
+      const outposts = game.academyOutposts || [];
+      outposts.forEach((o, idx) => {
+        const card = document.createElement('div');
+        card.className = 'panel-card';
+        const title = document.createElement('div');
+        title.className = 'title';
+        title.textContent = 'Outpost ' + (idx + 1);
+        card.appendChild(title);
+
+        if (!o.built) {
+          const cost = outpostBuildCost(idx);
+          const desc = document.createElement('div');
+          desc.className = 'muted';
+          desc.textContent = 'Build a satellite tower to extend your academy.';
+          card.appendChild(desc);
+          const btn = document.createElement('button');
+          btn.textContent = 'Build (' + formatCost(cost) + ')';
+          btn.disabled = !canAffordCost(cost);
+          btn.onclick = () => { buildOutpost(idx); renderAcademy(); };
+          card.appendChild(btn);
+          outpostList.appendChild(card);
+          return;
+        }
+
+        const info = document.createElement('div');
+        info.className = 'muted';
+        info.textContent = 'Level ' + (o.level || 1) + ' · Role: ' + (o.role || '—');
+        card.appendChild(info);
+
+        const roleRow = document.createElement('div');
+        roleRow.className = 'choice-row';
+        OUTPOST_ROLES.forEach(r => {
+          const btn = document.createElement('button');
+          btn.textContent = r.name;
+          btn.disabled = o.role === r.id;
+          btn.onclick = () => { setOutpostRole(idx, r.id); renderAcademy(); };
+          roleRow.appendChild(btn);
+        });
+        card.appendChild(roleRow);
+
+        const linkRow = document.createElement('div');
+        linkRow.className = 'choice-row';
+        if (idx > 0) {
+          const left = document.createElement('button');
+          left.textContent = (o.links && o.links.left ? 'Unlink' : 'Link') + ' Left';
+          left.onclick = () => { toggleOutpostLink(idx, 'left'); renderAcademy(); };
+          linkRow.appendChild(left);
+        }
+        if (idx < outposts.length - 1) {
+          const right = document.createElement('button');
+          right.textContent = (o.links && o.links.right ? 'Unlink' : 'Link') + ' Right';
+          right.onclick = () => { toggleOutpostLink(idx, 'right'); renderAcademy(); };
+          linkRow.appendChild(right);
+        }
+        card.appendChild(linkRow);
+
+        const upgrade = document.createElement('button');
+        const upgradeCost = outpostUpgradeCost(o.level || 1);
+        upgrade.textContent = 'Upgrade (' + formatCost(upgradeCost) + ')';
+        upgrade.disabled = !canAffordCost(upgradeCost);
+        upgrade.onclick = () => { upgradeOutpost(idx); renderAcademy(); };
+        card.appendChild(upgrade);
+
+        const slots = moduleSlotsPerOutpost();
+        const slotWrap = document.createElement('div');
+        slotWrap.className = 'mini-list';
+        for (let s = 0; s < slots; s++) {
+          const slot = document.createElement('div');
+          slot.className = 'module-slot' + (o.modules && o.modules[s] ? ' filled' : '');
+          if (o.modules && o.modules[s]) {
+            const mod = MODULES.find(m => m.id === o.modules[s]);
+            slot.textContent = mod ? mod.name : o.modules[s];
+            const rem = document.createElement('button');
+            rem.style.marginTop = '6px';
+            rem.textContent = 'Remove';
+            rem.onclick = () => { removeModuleFromOutpost(idx, s); renderAcademy(); };
+            slot.appendChild(rem);
+          } else {
+            slot.textContent = 'Empty slot';
+          }
+          slotWrap.appendChild(slot);
+        }
+        card.appendChild(slotWrap);
+
+        const invRow = document.createElement('div');
+        invRow.className = 'choice-row';
+        MODULES.forEach(m => {
+          if (moduleCount(m.id) <= 0) return;
+          const btn = document.createElement('button');
+          btn.textContent = 'Install ' + m.name;
+          btn.onclick = () => { installModule(idx, m.id); renderAcademy(); };
+          invRow.appendChild(btn);
+        });
+        if (invRow.children.length) card.appendChild(invRow);
+
+        outpostList.appendChild(card);
+      });
+
+      staffList.innerHTML = '';
+      STAFF.forEach(s => {
+        const st = getStaffState(s.id);
+        const card = document.createElement('div');
+        card.className = 'panel-card';
+        card.innerHTML = '<div class="title">' + s.name + '</div>' +
+          '<div class="muted">' + s.desc + '</div>' +
+          '<div class="muted">Upkeep: ' + s.upkeep + '/min</div>';
+        if (!st.hired) {
+          const hire = document.createElement('button');
+          hire.textContent = 'Hire (' + formatCost(s.cost) + ')';
+          hire.disabled = !canAffordCost(s.cost);
+          hire.onclick = () => { hireStaff(s.id); renderAcademy(); };
+          card.appendChild(hire);
+        } else {
+          const happy = document.createElement('div');
+          happy.className = 'muted';
+          happy.textContent = 'Happiness: ' + Math.round(st.happiness || 0) + '%';
+          card.appendChild(happy);
+          const treat = document.createElement('button');
+          treat.textContent = 'Treat (30 gold)';
+          treat.onclick = () => { treatStaff(s.id); renderAcademy(); };
+          card.appendChild(treat);
+        }
+        staffList.appendChild(card);
+      });
+
+      const available = availableFollowers();
+      const assignmentRows = [
+        { key: 'market', label: 'Market' },
+        { key: 'research', label: 'Research' },
+        { key: 'ritual', label: 'Ritual' },
+        { key: 'scouting', label: 'Scouting' },
+      ];
+      marketPanel.innerHTML = '';
+      const eventRem = (game.nextFollowerEventAt || 0) - Date.now();
+      const summary = document.createElement('div');
+      summary.className = 'stat';
+      summary.innerHTML = 'Available followers: <strong>' + available + '</strong><br>' +
+        'Gold/sec: ' + goldPerSecond().toFixed(2) + ' · Research/sec: ' + researchPointsPerSecond().toFixed(3) +
+        '<br>Event: ' + (game.followerEvent ? 'Active' : (eventRem > 0 ? Math.ceil(eventRem / 1000) + 's' : 'Ready'));
+      marketPanel.appendChild(summary);
+      assignmentRows.forEach(row => {
+        const line = document.createElement('div');
+        line.className = 'panel-card';
+        line.innerHTML = '<div class="row"><strong>' + row.label + '</strong><span>' + assignmentCount(row.key) + '</span></div>';
+        const controls = document.createElement('div');
+        controls.className = 'choice-row';
+        const minus = document.createElement('button');
+        minus.textContent = '-';
+        minus.onclick = () => { assignFollowers(row.key, -1); renderAcademy(); };
+        const plus = document.createElement('button');
+        plus.textContent = '+';
+        plus.onclick = () => { assignFollowers(row.key, 1); renderAcademy(); };
+        controls.appendChild(minus);
+        controls.appendChild(plus);
+        line.appendChild(controls);
+        marketPanel.appendChild(line);
+      });
+
+      moduleInventory.innerHTML = '';
+      MODULES.forEach(m => {
+        const count = moduleCount(m.id);
+        const card = document.createElement('div');
+        card.className = 'panel-card';
+        card.innerHTML = '<div class="title">' + m.name + '</div><div class="muted">' + m.desc + '</div>' +
+          '<div class="muted">In inventory: ' + count + '</div>';
+        moduleInventory.appendChild(card);
+      });
+    }
+
+    function renderLibrary() {
+      if (!librarySummary || !researchTree || !schoolChoices || !glyphChoices || !runeEtchingPanel || !craftingPanel || !storyPanel) return;
+      const ritualInfo = ritualWindowInfo();
+      const ritualText = ritualInfo.inWindow ? ('Active (' + Math.ceil(ritualInfo.remaining / 1000) + 's)') : ('Next in ' + Math.ceil(ritualInfo.remaining / 1000) + 's');
+      librarySummary.innerHTML = 'Research points: <strong>' + (game.research && game.research.points || 0).toFixed(2) + '</strong>' +
+        '<br>Daily blessing: <strong>' + (getDailyBlessing() ? getDailyBlessing().name : 'None') + '</strong>' +
+        '<br>Ritual window: <strong>' + ritualText + '</strong>';
+
+      researchTree.innerHTML = '';
+      RESEARCH_NODES.forEach(n => {
+        const unlocked = isResearchUnlocked(n.id);
+        const card = document.createElement('div');
+        card.className = 'panel-card';
+        card.innerHTML = '<div class="title">' + n.name + '</div><div class="muted">' + n.desc + '</div>' +
+          '<div class="muted">Cost: ' + n.cost + ' RP</div>';
+        const btn = document.createElement('button');
+        btn.textContent = unlocked ? 'Unlocked' : 'Unlock';
+        btn.disabled = unlocked || (game.research && game.research.points || 0) < n.cost;
+        btn.onclick = () => { unlockResearchNode(n.id); renderLibrary(); };
+        card.appendChild(btn);
+        researchTree.appendChild(card);
+      });
+
+      schoolChoices.innerHTML = '';
+      const slots = (game.schools && game.schools.slots) || 1;
+      SCHOOLS.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'panel-card';
+        card.innerHTML = '<div class="title">' + s.name + '</div><div class="muted">' + s.desc + '</div>';
+        const primaryBtn = document.createElement('button');
+        primaryBtn.textContent = (game.schools && game.schools.primary === s.id) ? 'Primary' : 'Set Primary';
+        primaryBtn.disabled = game.schools && game.schools.primary === s.id;
+        primaryBtn.onclick = () => { setSchoolSlot('primary', s.id); renderLibrary(); };
+        card.appendChild(primaryBtn);
+        const secondaryBtn = document.createElement('button');
+        secondaryBtn.textContent = (game.schools && game.schools.secondary === s.id) ? 'Secondary' : 'Set Secondary';
+        secondaryBtn.disabled = slots < 2 || (game.schools && game.schools.secondary === s.id);
+        secondaryBtn.onclick = () => { setSchoolSlot('secondary', s.id); renderLibrary(); };
+        card.appendChild(secondaryBtn);
+        schoolChoices.appendChild(card);
+      });
+
+      glyphChoices.innerHTML = '';
+      GLYPHS.forEach(g => {
+        const card = document.createElement('div');
+        card.className = 'panel-card' + ((game.glyphs && game.glyphs.active === g.id) ? ' glyph-active' : '');
+        card.innerHTML = '<div class="title">' + g.name + '</div><div class="muted">' + g.desc + '</div>';
+        const btn = document.createElement('button');
+        btn.textContent = (game.glyphs && game.glyphs.active === g.id) ? 'Deactivate' : 'Activate';
+        btn.onclick = () => { toggleGlyph(g.id); renderLibrary(); };
+        card.appendChild(btn);
+        glyphChoices.appendChild(card);
+      });
+
+      renderRuneEtching();
+      renderCrafting();
+      renderStoryPanel();
+    }
+
+    function renderObservatory() {
+      if (!encounterSummary || !encounterPanel || !contractsPanel || !challengePanel || !cosmeticPanel) return;
+      const enc = game.encounter || initialEncounterState();
+      encounterSummary.innerHTML = 'Threat: ' + (enc.threat || 0).toFixed(1) +
+        ' · Wards: ' + Math.round(game.wards || 0) + '/' + Math.round(maxWards());
+
+      encounterPanel.innerHTML = '';
+      const card = document.createElement('div');
+      card.className = 'panel-card';
+      if (!enc.active) {
+        card.innerHTML = '<div class="title">Next Encounter</div><div class="muted">Wave ' + ((enc.wave || 0) + 1) + '</div>';
+        const btn = document.createElement('button');
+        btn.textContent = 'Start Encounter';
+        btn.onclick = () => { startEncounter(); renderObservatory(); };
+        card.appendChild(btn);
+      } else {
+        const enemy = ENEMY_TYPES.find(e => e.id === enc.enemyType);
+        const mods = (enc.modifiers || []).map(id => WAVE_MODIFIERS.find(m => m.id === id)).filter(Boolean);
+        card.innerHTML = '<div class="title">Wave ' + enc.wave + '</div>' +
+          '<div class="muted">Enemy: ' + (enemy ? enemy.name : 'Unknown') + '</div>' +
+          '<div class="muted">Modifiers: ' + (mods.length ? mods.map(m => m.name).join(', ') : 'None') + '</div>' +
+          '<div class="muted">Time left: ' + Math.max(0, enc.timer).toFixed(1) + 's</div>';
+        const bar = document.createElement('div');
+        bar.className = 'progress-line';
+        const fill = document.createElement('div');
+        fill.className = 'fill';
+        const pct = enc.maxHp > 0 ? Math.max(0, enc.hp / enc.maxHp) * 100 : 0;
+        fill.style.width = pct.toFixed(1) + '%';
+        bar.appendChild(fill);
+        card.appendChild(bar);
+      }
+      encounterPanel.appendChild(card);
+
+      contractsPanel.innerHTML = '';
+      ensureContracts();
+      if (Array.isArray(game.contracts) && game.contracts.length) {
+        game.contracts.forEach((c, idx) => {
+          const item = document.createElement('div');
+          item.className = 'contract-item';
+          const timeLeft = c.accepted && c.expiresAt ? Math.max(0, (c.expiresAt - Date.now()) / 1000) : 0;
+          item.innerHTML = '<strong>' + c.name + '</strong><div class="muted">' + c.desc + '</div>' +
+            '<div class="muted">Progress: ' + c.progress.toFixed(1) + '/' + c.target + (c.accepted ? ' · ' + timeLeft.toFixed(0) + 's' : '') + '</div>';
+          const btn = document.createElement('button');
+          if (!c.accepted) {
+            btn.textContent = 'Accept';
+            btn.onclick = () => { acceptContract(idx); renderObservatory(); };
+          } else if (c.complete && !c.claimed) {
+            btn.textContent = 'Claim';
+            btn.onclick = () => { claimContract(idx); renderObservatory(); };
+          } else {
+            btn.textContent = c.complete ? 'Complete' : 'In progress';
+            btn.disabled = true;
+          }
+          item.appendChild(btn);
+          contractsPanel.appendChild(item);
+        });
+      } else {
+        const empty = document.createElement('div');
+        empty.className = 'contract-item';
+        empty.textContent = 'No contracts available yet.';
+        contractsPanel.appendChild(empty);
+      }
+
+      renderChallenges();
+      renderCosmetics();
+    }
+
+    function renderChallenges() {
+      if (!challengePanel) return;
+      challengePanel.innerHTML = '';
+      const tokenLine = document.createElement('div');
+      tokenLine.className = 'stat';
+      tokenLine.textContent = 'Challenge Tokens: ' + (game.challenge && game.challenge.tokens || 0);
+      challengePanel.appendChild(tokenLine);
+      ASCENSION_CHALLENGES.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'panel-card';
+        card.innerHTML = '<div class="title">' + c.name + '</div><div class="muted">' + c.desc + '</div>';
+        const active = game.challenge && game.challenge.active === c.id;
+        const done = game.challenge && Array.isArray(game.challenge.completed) && game.challenge.completed.includes(c.id);
+        const btn = document.createElement('button');
+        if (active) {
+          btn.textContent = 'Active';
+          btn.disabled = true;
+        } else if (done) {
+          btn.textContent = 'Completed';
+          btn.disabled = true;
+        } else {
+          btn.textContent = 'Activate Challenge';
+          btn.onclick = () => { activateChallenge(c.id); renderChallenges(); };
+        }
+        card.appendChild(btn);
+        challengePanel.appendChild(card);
+      });
+    }
+
+    function renderCosmetics() {
+      if (!cosmeticPanel) return;
+      cosmeticPanel.innerHTML = '';
+      COSMETIC_UPGRADES.forEach(c => {
+        const unlocked = c.unlock(game);
+        const card = document.createElement('div');
+        card.className = 'panel-card';
+        card.innerHTML = '<div class="title">' + c.name + '</div><div class="muted">' + c.desc + '</div>';
+        const btn = document.createElement('button');
+        if (!unlocked) {
+          btn.textContent = 'Locked';
+          btn.disabled = true;
+        } else {
+          const active = game.cosmetics && game.cosmetics.active === c.id;
+          btn.textContent = active ? 'Active' : 'Activate';
+          btn.onclick = () => {
+            if (!game.cosmetics) game.cosmetics = { unlocked: [], active: null };
+            game.cosmetics.active = active ? null : c.id;
+            renderCosmetics();
+            renderTower();
+          };
+        }
+        card.appendChild(btn);
+        cosmeticPanel.appendChild(card);
+      });
+    }
+
+    function renderRuneEtching() {
+      if (!runeEtchingPanel) return;
+      ensureRunePattern();
+      const state = game.runeEtching || { selected: [], attempts: 0 };
+      runeEtchingPanel.innerHTML = '';
+      const info = document.createElement('div');
+      info.className = 'stat';
+      const buffLeft = Math.max(0, (game.runeEtchingBuffEnd || 0) - Date.now());
+      const maxAttempts = runeEtchingMaxAttempts();
+      info.innerHTML = 'Attempts today: ' + (state.attempts || 0) + '/' + maxAttempts +
+        '<br>Selected: ' + (state.selected && state.selected.length ? state.selected.join(', ') : '—') +
+        (buffLeft > 0 ? '<br>Buff active: ' + Math.ceil(buffLeft / 1000) + 's' : '');
+      runeEtchingPanel.appendChild(info);
+      const grid = document.createElement('div');
+      grid.className = 'rune-grid';
+      RUNE_SYMBOLS.forEach(r => {
+        const btn = document.createElement('button');
+        btn.className = 'rune-btn';
+        btn.textContent = r;
+        btn.disabled = (state.selected && state.selected.length >= 3) || (state.attempts || 0) >= maxAttempts;
+        btn.onclick = () => {
+          if (!state.selected) state.selected = [];
+          if (state.selected.length >= 3) return;
+          state.selected.push(r);
+          game.runeEtching = state;
+          renderRuneEtching();
+        };
+        grid.appendChild(btn);
+      });
+      runeEtchingPanel.appendChild(grid);
+      if (state.selected && state.selected.length >= 3) {
+        const btn = document.createElement('button');
+        btn.textContent = 'Etch the rune';
+        btn.onclick = () => { attemptRuneEtching(); renderRuneEtching(); };
+        runeEtchingPanel.appendChild(btn);
+      }
+    }
+
+    function renderCrafting() {
+      if (!craftingPanel) return;
+      craftingPanel.innerHTML = '';
+      CRAFTING_RECIPES.forEach(r => {
+        const card = document.createElement('div');
+        card.className = 'panel-card';
+        card.innerHTML = '<div class="title">' + r.name + '</div><div class="muted">' + r.desc + '</div>' +
+          '<div class="muted">Cost: ' + formatCost(r.cost) + '</div>';
+        const btn = document.createElement('button');
+        btn.textContent = 'Craft';
+        btn.disabled = !canAffordCost(r.cost);
+        btn.onclick = () => {
+          if (!payCost(r.cost)) return;
+          r.effect();
+          renderLibrary();
+        };
+        card.appendChild(btn);
+        craftingPanel.appendChild(card);
+      });
+    }
+
+    function renderStoryPanel() {
+      if (!storyPanel) return;
+      storyPanel.innerHTML = '';
+      STORY_ENTRIES.forEach(entry => {
+        const unlocked = entry.unlock(game);
+        const row = document.createElement('div');
+        row.className = 'story-entry' + (unlocked ? '' : ' locked');
+        row.innerHTML = '<strong>' + entry.title + '</strong>' + (unlocked ? '<div class="muted">' + entry.text + '</div>' : '<div class="muted">Locked</div>');
+        storyPanel.appendChild(row);
+      });
+      const artifactHeader = document.createElement('div');
+      artifactHeader.className = 'section-title';
+      artifactHeader.textContent = 'Milestone Artifacts';
+      storyPanel.appendChild(artifactHeader);
+      ARTIFACTS.forEach(art => {
+        const unlocked = art.unlock(game);
+        const claimed = Array.isArray(game.milestonesClaimed) && game.milestonesClaimed.includes(art.id);
+        const row = document.createElement('div');
+        row.className = 'story-entry' + (unlocked ? '' : ' locked');
+        row.innerHTML = '<strong>' + art.name + '</strong><div class="muted">' + art.desc + '</div>';
+        const btn = document.createElement('button');
+        if (!unlocked) {
+          btn.textContent = 'Locked';
+          btn.disabled = true;
+        } else if (claimed) {
+          btn.textContent = 'Claimed';
+          btn.disabled = true;
+        } else {
+          btn.textContent = 'Claim';
+          btn.onclick = () => { claimArtifact(art.id); renderStoryPanel(); renderUI(); };
+        }
+        row.appendChild(btn);
+        storyPanel.appendChild(row);
       });
     }
 
@@ -4042,6 +6194,8 @@
         const tier = towerTier(height);
         const foundationClass = b.type === 'Foundation' ? ' foundation' : '';
         el.className = 'tower-block tier-' + tier + foundationClass + (b.side ? ' ' + b.side : '');
+        const cosmetic = COSMETIC_UPGRADES.find(c => game.cosmetics && game.cosmetics.active === c.id);
+        if (cosmetic && cosmetic.className) el.classList.add(cosmetic.className);
         const label = (b.type === 'Foundation') ? 'Foundation' : (b.level ? b.type + ' Lv.' + b.level : b.type);
         const topper = (addCrenel || addTurrets)
           ? '<div class="tower-topper">' +
@@ -4091,6 +6245,7 @@
       const savedMana = game.wardOfPreservationUsed ? game.mana * 0.05 : 0;
       const hallLvl = countRooms('Hall of Preservation');
       const savedFloorsKept = hallLvl >= 1 ? Math.floor(totalFloors() * PRESTIGE_KEEP_FLOORS_PCT) : 0;
+      const keptFollowers = Math.floor(totalFollowers() * 0.25);
       game.stats.totalFloorsEver = (game.stats.totalFloorsEver || 0) + totalFloors();
       const fullPrestige = !soft;
       if (fullPrestige) game.prestigeTokens = (game.prestigeTokens || 0) + 1;
@@ -4107,6 +6262,15 @@
       game.softPrestige = soft ? game.softPrestige + 1 : game.softPrestige;
       game.mana = savedMana;
       game.manaFonts = keepManaFont ? 1 : 0;
+      game.followers = { novice: keptFollowers, acolyte: 0, sage: 0 };
+      game.reputation = Math.max(0, (game.reputation || 0) - 10);
+      game.followerAssignments = initialFollowerAssignments();
+      game.followerProgress = 0;
+      game.promotionProgress = { novice: 0, acolyte: 0 };
+      game.scoutingProgress = 0;
+      game.gold = 0;
+      game.essence = initialEssence();
+      game.wards = maxWards();
       game.specialRooms = initialSpecialRooms();
       game.memorizedSpells = (game.memorizedSpells || []).slice(0, maxSpellSlots());
       game.stairs = 0;
@@ -4133,6 +6297,14 @@
         worldweaveTimer: 0,
         convergenceTimer: 0,
         paradoxTimer: 0,
+        overchargeTimer: 0,
+        overchargeMult: 1,
+        concessionTimer: 0,
+        comboTimer: 0,
+        comboMult: 1,
+        overchargeCharge: 0,
+        flameSurgeTimer: 0,
+        frostSlowTimer: 0,
       };
       game.studyCount = studyKept;
       game.stamina = maxStamina();
@@ -4141,6 +6313,8 @@
       game.meditateStacks = 0;
       game.scryLockedRoom = null;
       game.ritualBuffEnd = 0;
+      game.ritualWindowBonusPct = 0;
+      game.ritualWindowBonusEnd = 0;
       game.attuneDiscount = 0;
       game.relics = relicKept;
       game.relicDraft = [];
@@ -4157,6 +6331,12 @@
       game.stats.transmutateCasts = 0;
       game.stats.focusSurgeCasts = 0;
       game.stats.vigorInfusionCasts = 0;
+      game.runeEtchingBuffEnd = 0;
+      game.encounter = initialEncounterState();
+      game.contracts = [];
+      game.followerEvent = null;
+      game.nextFollowerEventAt = 0;
+      game.spellSynergy = { lastElement: null, lastCastAt: 0, chain: [] };
       renderAll();
       playSound('milestone');
     }
@@ -4360,6 +6540,9 @@
           const panelId = tab.getAttribute('data-panel');
           if (panelId === 'ascensionModal') showToast('Ascension', 'Unlocks at ' + ASCENSION_TAB_UNLOCK + ' floors.');
           else if (panelId === 'relicsModal') showToast('Relics', 'Claim your first relic to unlock this tab.');
+          else if (panelId === 'academyModal') showToast('Academy', 'Unlocks at ' + FOLLOWER_THRESHOLDS.academy + ' followers.');
+          else if (panelId === 'libraryModal') showToast('Library', 'Unlocks at ' + FOLLOWER_THRESHOLDS.library + ' followers.');
+          else if (panelId === 'observatoryModal') showToast('Observatory', 'Unlocks at ' + FOLLOWER_THRESHOLDS.observatory + ' followers.');
           else showToast('Locked', 'This tab is currently locked.');
           return;
         }
@@ -4586,9 +6769,13 @@
         if (typeof game.wasManaCapped !== 'boolean') game.wasManaCapped = false;
         if (typeof game.paragonSpent.focus !== 'number') game.paragonSpent.focus = 0;
         if (game.prestigeTokenChoice !== 'font' && game.prestigeTokenChoice !== 'study' && game.prestigeTokenChoice !== 'relic') game.prestigeTokenChoice = null;
+        ensureExpandedDefaults();
         capMana();
         capStamina();
         capFocus();
+        capWards();
+        ensureDailyBlessing();
+        ensureRunePattern();
         renderAll();
         showToast('Import', 'Save loaded.');
       } catch (e) {
@@ -4702,9 +6889,11 @@
       if (!game.paragonSpent || typeof game.paragonSpent.manaPct !== 'number') game.paragonSpent = { manaPct: 0, spellEffect: 0, stamina: 0, focus: 0 };
       if (typeof game.paragonSpent.focus !== 'number') game.paragonSpent.focus = 0;
       if (game.prestigeTokenChoice !== 'font' && game.prestigeTokenChoice !== 'study' && game.prestigeTokenChoice !== 'relic') game.prestigeTokenChoice = null;
+      ensureExpandedDefaults();
       capMana();
       capStamina();
       capFocus();
+      capWards();
 
       const now = Date.now();
       const last = game.lastSave || now;
@@ -4752,6 +6941,8 @@
       try { localStorage.removeItem('mageTowerSave'); } catch (e) {}
     }
     loadGame();
+    ensureDailyBlessing();
+    ensureRunePattern();
     renderAll();
     checkAchievements();
     openPanel('towerModal');
@@ -4776,15 +6967,30 @@
     let towerPulseIndex = 0;
     let lastActivitiesRender = 0;
     let lastSpellRender = 0;
+    let lastPanelRender = 0;
     setInterval(() => {
       const now = Date.now();
       const dt = (now - lastTickTime) / 1000;
       lastTickTime = now;
+      if (!game.dailyBlessing || game.dailyBlessing.date !== currentDayKey()) {
+        ensureDailyBlessing();
+        ensureRunePattern();
+      }
       game.stats.timePlayedMs = (game.stats.timePlayedMs || 0) + Math.round(dt * 1000);
       const tf = totalFloors();
       if (tf > (game.stats.maxFloorsReached || 0)) game.stats.maxFloorsReached = tf;
       const mps = manaPerSecond();
       if (mps > (game.stats.maxManaPerSecReached || 0)) game.stats.maxManaPerSecReached = mps;
+      if (game.challenge && game.challenge.active) {
+        const cid = game.challenge.active;
+        const done = Array.isArray(game.challenge.completed) && game.challenge.completed.includes(cid);
+        if (!done && tf >= 40) {
+          game.challenge.completed = [...(game.challenge.completed || []), cid];
+          game.challenge.tokens = (game.challenge.tokens || 0) + 1;
+          game.challenge.active = null;
+          showToast('Challenge complete', 'You earned a challenge token.');
+        }
+      }
       if (mps >= GOAL_MANA_PER_SEC && !(game.stats.goalManaReached)) {
         game.stats.goalManaReached = true;
         showToast('Goal reached!', 'You reached ' + formatNum(GOAL_MANA_PER_SEC) + ' mana/sec!');
@@ -4805,6 +7011,22 @@
       } else if (!atCap) {
         game.wasManaCapped = false;
       }
+      if (game.active) {
+        if (atCap) game.active.overchargeCharge = (game.active.overchargeCharge || 0) + dt;
+        else game.active.overchargeCharge = 0;
+        const shouldOvercharge = (game.active.overchargeCharge || 0) >= OVERCHARGE_GRACE_SEC;
+        if (shouldOvercharge) {
+          game.active.overchargeTimer = (game.active.overchargeTimer || 0) + dt;
+          game.active.overchargeMult = 1.2 + schoolBonus('overcharge');
+          const drainPct = OVERCHARGE_DRAIN_PCT * (1 + glyphBonus('overchargeDrain'));
+          const drain = maxWards() * drainPct * dt;
+          game.wards = Math.max(0, (game.wards || 0) - drain);
+          if (game.encounter) game.encounter.threat = (game.encounter.threat || 0) + dt * 0.05;
+        } else {
+          game.active.overchargeTimer = 0;
+          game.active.overchargeMult = 1;
+        }
+      }
 
       const sps = staminaPerSecond();
       const staminaGain = sps * Math.min(dt, TICK / 1000 * 2);
@@ -4816,6 +7038,58 @@
         game.focus = Math.min((game.focus || 0) + focusGain, maxFocus());
       }
       capFocus();
+
+      const wardsGain = wardsRegenPerSecond() * Math.min(dt, TICK / 1000 * 2);
+      game.wards = Math.min((game.wards || 0) + wardsGain, maxWards());
+
+      const goldGain = goldPerSecond() * Math.min(dt, TICK / 1000 * 2);
+      if (goldGain > 0) gainGold(goldGain);
+      const upkeep = (staffUpkeepPerMin() / 60) * Math.min(dt, TICK / 1000 * 2);
+      if (upkeep > 0) {
+        if ((game.gold || 0) >= upkeep) {
+          spendGold(upkeep);
+          STAFF.forEach(s => {
+            const st = getStaffState(s.id);
+            if (!st.hired) return;
+            st.happiness = Math.min(100, (st.happiness || 60) + dt * 0.5);
+          });
+        } else {
+          STAFF.forEach(s => {
+            const st = getStaffState(s.id);
+            if (!st.hired) return;
+            st.happiness = Math.max(20, (st.happiness || 60) - dt * 2);
+          });
+        }
+      }
+
+      if (game.research) {
+        const rpGain = researchPointsPerSecond() * Math.min(dt, TICK / 1000 * 2);
+        game.research.points = (game.research.points || 0) + rpGain;
+      }
+      const followerGain = followerGrowthPerSecond() * Math.min(dt, TICK / 1000 * 2);
+      game.followerProgress = (game.followerProgress || 0) + followerGain;
+      const newFollowers = Math.floor(game.followerProgress || 0);
+      if (newFollowers > 0) {
+        game.followerProgress -= newFollowers;
+        gainFollowers(newFollowers);
+      }
+      const scouting = assignmentCount('scouting');
+      if (scouting > 0) {
+        game.scoutingProgress = (game.scoutingProgress || 0) + scouting * dt * 0.015;
+        const found = Math.floor(game.scoutingProgress || 0);
+        if (found > 0) {
+          game.scoutingProgress -= found;
+          for (let i = 0; i < found; i++) {
+            const type = ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)];
+            gainEssence(type, 1);
+          }
+        }
+      }
+      promoteFollowers(dt);
+      updateEncounter(dt);
+      updateContracts(dt);
+      maybeTriggerFollowerEvent();
+      if (game.encounter) game.encounter.threat = Math.max(0, (game.encounter.threat || 0) - dt * 0.01);
 
       const hadActiveSpell = game.active.timer > 0 || game.active.harvestTimer > 0 || game.active.leylineTapTimer > 0;
       if (game.active.timer > 0) {
@@ -4841,9 +7115,25 @@
         game.active.focusCondenserTimer -= dt;
         if (game.active.focusCondenserTimer < 0) game.active.focusCondenserTimer = 0;
       }
+      if (game.active.flameSurgeTimer > 0) {
+        game.active.flameSurgeTimer -= dt;
+        if (game.active.flameSurgeTimer < 0) game.active.flameSurgeTimer = 0;
+      }
+      if (game.active.frostSlowTimer > 0) {
+        game.active.frostSlowTimer -= dt;
+        if (game.active.frostSlowTimer < 0) game.active.frostSlowTimer = 0;
+      }
       if (game.active.spellCostDiscountTimer > 0) {
         game.active.spellCostDiscountTimer -= dt;
         if (game.active.spellCostDiscountTimer <= 0) game.active.spellCostDiscountPct = 0;
+      }
+      if (game.active.comboTimer > 0) {
+        game.active.comboTimer -= dt;
+        if (game.active.comboTimer <= 0) game.active.comboMult = 1;
+      }
+      if (game.active.concessionTimer > 0) {
+        game.active.concessionTimer -= dt;
+        if (game.active.concessionTimer < 0) game.active.concessionTimer = 0;
       }
       const hadOverclock = game.active.overclockTimer > 0;
       if (game.active.overclockTimer > 0) {
@@ -4884,6 +7174,12 @@
       if (now - lastSpellRender > 250) {
         renderSpells();
         lastSpellRender = now;
+      }
+      if (now - lastPanelRender > 500) {
+        renderAcademy();
+        renderLibrary();
+        renderObservatory();
+        lastPanelRender = now;
       }
       checkAchievements();
 
