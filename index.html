@@ -1212,7 +1212,7 @@
         <h2>Activities</h2>
         <button class="panel-close" aria-label="Close" onclick="closePanel('activitiesModal')">&times;</button>
       </div>
-      <p class="section-title">Spend stamina and focus to perform actions that will improve your tower and your magic.</p>
+      <p class="section-title">Short-term actions that spend stamina and focus. Long-term upgrades now live in the Library research tree.</p>
       <div id="activities"></div>
     </div>
   </div>
@@ -1844,7 +1844,7 @@
       return {};
     }
     function initialResearchState() {
-      return { points: 0, unlocked: [] };
+      return { points: 0, unlocked: [], levels: {} };
     }
     function initialEncounterState() {
       return { active: false, wave: 0, hp: 0, maxHp: 0, timer: 0, modifiers: [], enemyType: null, bossPhase: 0, threat: 0, lastWaveAt: 0 };
@@ -2718,7 +2718,12 @@
       if (!Array.isArray(game.contracts)) game.contracts = [];
       game.contracts = game.contracts.filter(c => !c.expired && !c.claimed);
       while (game.contracts.length < 2) {
-        const pool = CONTRACT_TEMPLATES.filter(t => !game.contracts.some(c => c.id === t.id));
+        const canRelic = totalFloors() >= 45 && availableRelics().length > 0 && !(Array.isArray(game.relicDraft) && game.relicDraft.length > 0);
+        const pool = CONTRACT_TEMPLATES.filter(t => {
+          if (game.contracts.some(c => c.id === t.id)) return false;
+          if (t.type === 'relicScout' && !canRelic) return false;
+          return true;
+        });
         if (pool.length === 0) break;
         const template = pool[Math.floor(Math.random() * pool.length)];
         game.contracts.push({
@@ -2745,6 +2750,20 @@
       if (reward.gold) gainGold(reward.gold);
       if (reward.essence) {
         Object.keys(reward.essence).forEach(t => gainEssence(t, reward.essence[t]));
+      }
+      if (reward.relicDraft) {
+        if (Array.isArray(game.relicDraft) && game.relicDraft.length > 0) {
+          showToast('Relic Expedition', 'You already have a relic draft waiting.');
+        } else {
+          const choices = pickRelicChoices(3);
+          if (choices.length === 0) {
+            showToast('Relic Expedition', 'No relics remain this run.');
+          } else {
+            game.relicDraft = choices.map(r => r.id);
+            game.relicDraftSeen = false;
+            openRelicDraft();
+          }
+        }
       }
       showToast('Contract complete', 'Rewards delivered.');
     }
@@ -2775,6 +2794,10 @@
           if (c.progress >= c.target) c.complete = true;
         }
         if (c.type === 'manaLimit' && manaRatio <= 0.4) {
+          c.progress += 1;
+          if (c.progress >= c.target) c.complete = true;
+        }
+        if (c.type === 'relicScout') {
           c.progress += 1;
           if (c.progress >= c.target) c.complete = true;
         }
@@ -3082,6 +3105,12 @@
       return base * mult;
     }
 
+    function manaReservoirLevel() {
+      return (game.research && game.research.levels && game.research.levels.manaReservoir) || game.studyCount || 0;
+    }
+    function spellEtchingLevel() {
+      return (game.research && game.research.levels && game.research.levels.spellEtching) || Math.round(game.transcribeBonusPct || 0);
+    }
     function spellEffectMultiplier() {
       const base = 1 + game.passive.arcane * 0.15;
       const libraryLevel = countRooms('Library');
@@ -3093,7 +3122,7 @@
         const lvl = countRooms(name);
         mult *= (1 + lvl * info.spellPct);
       });
-      mult *= (1 + (game.transcribeBonusPct || 0) / 100);
+      mult *= (1 + spellEtchingLevel() / 100);
       mult *= (1 + (relicModifiers().spellEffectMult || 0));
       mult *= paragonSpellEffectMultiplier();
       mult *= 1 + followerSpellEffectBonus();
@@ -3139,7 +3168,7 @@
     }
 
     function maxMana() {
-      const base = BASE_MANA_MAX * Math.pow(1.07, game.studyCount || 0);
+      const base = BASE_MANA_MAX * Math.pow(1.07, manaReservoirLevel());
       const roomBonus = 1 + roomEffectSum('manaCapPct');
       const passiveBonus = 1 + (game.passive.manaReservoir || 0) * 0.04;
       const relicBonus = 1 + (relicModifiers().maxManaMult || 0);
@@ -3291,6 +3320,15 @@
       if (!game.research || typeof game.research !== 'object') game.research = initialResearchState();
       if (!Array.isArray(game.research.unlocked)) game.research.unlocked = [];
       if (typeof game.research.points !== 'number') game.research.points = 0;
+      if (!game.research.levels || typeof game.research.levels !== 'object') game.research.levels = {};
+      if (typeof game.research.levels.manaReservoir !== 'number') game.research.levels.manaReservoir = 0;
+      if (typeof game.research.levels.spellEtching !== 'number') game.research.levels.spellEtching = 0;
+      if ((game.studyCount || 0) > 0 && game.research.levels.manaReservoir === 0) {
+        game.research.levels.manaReservoir = game.studyCount;
+      }
+      if ((game.transcribeBonusPct || 0) > 0 && game.research.levels.spellEtching === 0) {
+        game.research.levels.spellEtching = Math.round(game.transcribeBonusPct || 0);
+      }
       if (!game.modules || typeof game.modules !== 'object') game.modules = {};
       if (!game.schools || typeof game.schools !== 'object') game.schools = { primary: null, secondary: null, slots: 1 };
       if (typeof game.schools.slots !== 'number') game.schools.slots = 1;
@@ -3336,7 +3374,7 @@
       return Math.max(0, baseCost + poolScale);
     }
     function studyFocusCost() {
-      const base = 1 * Math.pow(1.05, game.studyCount || 0);
+      const base = 1 * Math.pow(1.05, manaReservoirLevel());
       return Math.max(1, base);
     }
 
@@ -4232,45 +4270,30 @@
     // -------------------- ACTIVITIES --------------------
     const ACTIVITIES = [
       {
-        id: 'study',
-        name: 'Study',
-        desc: 'Increases max mana pool by 7%.',
-        costStaminaPct: 0.33,
-        focusCost: () => studyFocusCost(),
-        effect: () => {
-          const focusCost = studyFocusCost();
-          if (!trySpendFocus(focusCost)) return;
-          const cost = maxStamina() * 0.33;
-          if (game.stamina < cost) return;
-          game.stamina -= cost;
-          recordActivityOrSpell();
-          setExhausted();
-          game.studyCount = (game.studyCount || 0) + 1;
-          capMana();
-          playSound('spell');
-        },
-        costText: () => 'Cost 33% max stamina, ' + formatNum(studyFocusCost()) + ' focus',
-      },
-      {
         id: 'channel',
         name: 'Channel',
-        desc: 'Instant mana: 1.5× your current mana/sec.',
+        desc: 'Convert stamina and focus into a burst of mana.',
         unlockFloors: 4,
-        costStaminaPct: 0.20,
-        focusCost: 5,
+        costStaminaPct: () => Math.max(0.18, 0.30 * (1 + (researchEffect('channelCost') || 0))),
+        focusCost: 8,
         effect: () => {
-          if (!trySpendFocus(5)) return;
-          const cost = maxStamina() * 0.20;
+          if (!trySpendFocus(8)) return;
+          const costPct = Math.max(0.18, 0.30 * (1 + (researchEffect('channelCost') || 0)));
+          const cost = maxStamina() * costPct;
           if (game.stamina < cost) return;
           game.stamina -= cost;
           recordActivityOrSpell();
           game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          const gain = manaPerSecond() * 1.5;
+          const baseMult = 1.6 + Math.min(0.6, totalFloors() * 0.01);
+          const gain = manaPerSecond() * (baseMult + (researchEffect('channelBoost') || 0));
           game.mana = Math.min(game.mana + gain, maxMana());
           game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
           playSound('spell');
         },
-        costText: () => 'Cost 20% max stamina, 5 focus',
+        costText: () => {
+          const costPct = Math.max(0.18, 0.30 * (1 + (researchEffect('channelCost') || 0)));
+          return 'Cost ' + Math.round(costPct * 100) + '% max stamina, 8 focus';
+        },
       },
       {
         id: 'meditate',
@@ -4287,27 +4310,6 @@
           playSound('spell');
         },
         costText: () => 'Cost 25% max stamina (' + formatNum(Math.floor(maxStamina() * 0.25)) + ')',
-      },
-      {
-        id: 'harvest',
-        name: 'Harvest',
-        desc: 'Instant mana: 2× your current mana/sec.',
-        unlockFloors: 8,
-        costStaminaPct: 0.50,
-        focusCost: 15,
-        effect: () => {
-          if (!trySpendFocus(15)) return;
-          const cost = maxStamina() * 0.50;
-          if (game.stamina < cost) return;
-          game.stamina -= cost;
-          recordActivityOrSpell();
-          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          const gain = manaPerSecond() * 2;
-          game.mana = Math.min(game.mana + gain, maxMana());
-          game.stats.totalManaEarned = (game.stats.totalManaEarned || 0) + gain;
-          playSound('spell');
-        },
-        costText: () => 'Cost 50% max stamina, 15 focus',
       },
       {
         id: 'scry',
@@ -4329,48 +4331,6 @@
           playSound('spell');
         },
         costText: () => 'Cost 20% max stamina (' + formatNum(Math.floor(maxStamina() * 0.20)) + ')',
-      },
-      {
-        id: 'transcribe',
-        name: 'Transcribe',
-        desc: 'Permanent +1% spell effect.',
-        unlockFloors: 25,
-        costStaminaPct: 0.40,
-        focusCost: 15,
-        effect: () => {
-          if (!trySpendFocus(15)) return;
-          const cost = maxStamina() * 0.40;
-          if (game.stamina < cost) return;
-          game.stamina -= cost;
-          recordActivityOrSpell();
-          setExhausted();
-          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          game.transcribeBonusPct = (game.transcribeBonusPct || 0) + 1;
-          playSound('spell');
-        },
-        costText: () => 'Cost 40% max stamina, 15 focus',
-      },
-      {
-        id: 'forgeSigil',
-        name: 'Forge Sigil',
-        desc: 'Add a Sigil stack: +2% Mana Font output (max ' + SIGIL_STACK_CAP + ').',
-        unlockFloors: 22,
-        costStaminaPct: 0.35,
-        focusCost: 10,
-        disabled: () => (game.sigilStacks || 0) >= SIGIL_STACK_CAP,
-        effect: () => {
-          if (!trySpendFocus(10)) return;
-          if ((game.sigilStacks || 0) >= SIGIL_STACK_CAP) return;
-          const cost = maxStamina() * 0.35;
-          if (game.stamina < cost) return;
-          game.stamina -= cost;
-          recordActivityOrSpell();
-          setExhausted();
-          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          game.sigilStacks = Math.min((game.sigilStacks || 0) + 1, SIGIL_STACK_CAP);
-          playSound('spell');
-        },
-        costText: () => 'Cost 35% max stamina, 10 focus · Sigils ' + (game.sigilStacks || 0) + '/' + SIGIL_STACK_CAP,
       },
       {
         id: 'ritual',
@@ -4406,62 +4366,9 @@
         costText: () => 'Cost ' + Math.round(80 * ritualCostMultiplier()) + '% max stamina, 25 focus',
       },
       {
-        id: 'relicHunt',
-        name: 'Relic Hunt',
-        desc: 'Scout for a relic draft outside milestones. 25 min cooldown.',
-        unlockFloors: 45,
-        costStaminaPct: 0.50,
-        focusCost: 15,
-        cooldownMs: RELIC_HUNT_COOLDOWN_MS,
-        cooldownKey: 'relicHuntCooldownEnd',
-        disabled: () => (Array.isArray(game.relicDraft) && game.relicDraft.length > 0) || availableRelics().length === 0,
-        effect: () => {
-          if (!trySpendFocus(15)) return;
-          const cost = maxStamina() * 0.50;
-          if (game.stamina < cost) return;
-          if ((game.relicHuntCooldownEnd || 0) > Date.now()) return;
-          if (Array.isArray(game.relicDraft) && game.relicDraft.length > 0) {
-            showToast('Relic Hunt', 'You already have a relic draft waiting.');
-            return;
-          }
-          const choices = pickRelicChoices(3);
-          if (choices.length === 0) {
-            showToast('Relic Hunt', 'No relics remain this run.');
-            return;
-          }
-          game.stamina -= cost;
-          recordActivityOrSpell();
-          setExhausted();
-          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          game.relicDraft = choices.map(r => r.id);
-          game.relicDraftSeen = false;
-          game.relicHuntCooldownEnd = Date.now() + RELIC_HUNT_COOLDOWN_MS;
-          playSound('spell');
-          openRelicDraft();
-        },
-        costText: () => 'Cost 50% max stamina, 15 focus',
-      },
-      {
-        id: 'attune',
-        name: 'Attune',
-        desc: 'Next spell cast costs 20% less mana.',
-        unlockFloors: 20,
-        costStaminaPct: 0.15,
-        effect: () => {
-          const cost = maxStamina() * 0.15;
-          if (game.stamina < cost) return;
-          game.stamina -= cost;
-          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
-          game.attuneDiscount = 0.20;
-          playSound('spell');
-          showToast('Attune', 'Next spell 20% cheaper.');
-        },
-        costText: () => 'Cost 15% max stamina (' + formatNum(Math.floor(maxStamina() * 0.15)) + ')',
-      },
-      {
-        id: 'recruitFollowers',
-        name: 'Recruit Followers',
-        desc: 'Gain new followers scaled by reputation.',
+        id: 'outreach',
+        name: 'Outreach',
+        desc: 'Grow your following and improve reputation.',
         unlockFloors: 12,
         costStaminaPct: 0.25,
         focusCost: 8,
@@ -4471,29 +4378,43 @@
           if (game.stamina < cost) return;
           game.stamina -= cost;
           recordActivityOrSpell();
-          const gain = Math.max(2, Math.floor(2 + (game.reputation || 0) * 0.08));
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          const rep = game.reputation || 0;
+          const base = 3 + Math.floor(totalFloors() / 20);
+          const repBonus = Math.floor(rep * 0.08);
+          const boost = 1 + (researchEffect('outreachBoost') || 0);
+          const gain = Math.max(2, Math.floor((base + repBonus) * boost));
           gainFollowers(gain);
-          adjustReputation(1);
+          adjustReputation(3);
           playSound('spell');
         },
         costText: () => 'Cost 25% max stamina, 8 focus',
       },
       {
-        id: 'communitySermon',
-        name: 'Community Sermon',
-        desc: 'Boost reputation and follower morale.',
-        unlockFloors: 18,
+        id: 'refineEssence',
+        name: 'Refine Essence',
+        desc: 'Convert stamina into elemental essence.',
+        unlockFloors: 20,
+        unlockCheck: () => totalFloors() >= 20 && researchFlag('unlockElements'),
+        unlockText: () => 'Unlocks at 20 floors + Elemental Studies',
         costStaminaPct: 0.20,
+        focusCost: 10,
         effect: () => {
+          if (!trySpendFocus(10)) return;
           const cost = maxStamina() * 0.20;
           if (game.stamina < cost) return;
           game.stamina -= cost;
           recordActivityOrSpell();
-          adjustReputation(4);
-          if (Math.random() < 0.5) gainFollowers(1);
+          game.stats.totalStaminaSpent = (game.stats.totalStaminaSpent || 0) + cost;
+          const types = selectedSchools();
+          const primary = types.length ? types[0] : ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)];
+          const secondary = types.length > 1 ? types[1] : ESSENCE_TYPES[Math.floor(Math.random() * ESSENCE_TYPES.length)];
+          const bonus = Math.max(0, Math.floor((game.reputation || 0) / 25));
+          gainEssence(primary, 2 + bonus);
+          gainEssence(secondary, 1 + bonus);
           playSound('spell');
         },
-        costText: () => 'Cost 20% max stamina (' + formatNum(Math.floor(maxStamina() * 0.20)) + ')',
+        costText: () => 'Cost 20% max stamina, 10 focus',
       },
     ];
 
@@ -4555,10 +4476,34 @@
         effect: () => { game.focus = Math.min((game.focus || 0) + 30, maxFocus()); },
       },
       {
+        id: 'attunementSeal',
+        name: 'Attunement Seal',
+        desc: 'Next spell cast costs 20% less mana.',
+        cost: { gold: 40, essence: { arcane: 6, astral: 4 } },
+        unlockCheck: () => researchFlag('unlockAttunement'),
+        effect: () => {
+          game.attuneDiscount = 0.20;
+          showToast('Attunement', 'Next spell costs 20% less mana.');
+        },
+      },
+      {
+        id: 'sigilPress',
+        name: 'Sigil Press',
+        desc: 'Forge a Sigil stack (Mana Font output).',
+        cost: { gold: 55, essence: { arcane: 6, fire: 4 } },
+        unlockCheck: () => researchFlag('unlockSigilCrafting'),
+        effect: () => {
+          game.sigilStacks = Math.min((game.sigilStacks || 0) + 1, SIGIL_STACK_CAP);
+          showToast('Sigil Forged', 'Mana Fonts grow stronger.');
+        },
+        disabled: () => (game.sigilStacks || 0) >= SIGIL_STACK_CAP,
+      },
+      {
         id: 'forgeModule',
         name: 'Forge Module',
         desc: 'Craft a random tower module.',
         cost: { gold: 60, essence: { arcane: 6, lightning: 4 } },
+        unlockCheck: () => researchFlag('modularTowers'),
         effect: () => {
           const mod = MODULES[Math.floor(Math.random() * MODULES.length)];
           addModule(mod.id, 1);
@@ -4566,6 +4511,12 @@
       },
     ];
     const RESEARCH_NODES = [
+      { id: 'manaReservoir', name: 'Mana Reservoir Studies', repeatable: true, baseCost: 6, costScale: 1.55, maxLevel: 40, desc: '+7% max mana per level.', effects: {} },
+      { id: 'spellEtching', name: 'Spell Etching', repeatable: true, baseCost: 8, costScale: 1.6, maxLevel: 50, desc: '+1% spell effect per level.', effects: {} },
+      { id: 'channelFocus', name: 'Channel Focus', cost: 10, desc: 'Channel grants +0.4× mana and -5% stamina cost.', effects: { channelBoost: 0.4, channelCost: -0.05 } },
+      { id: 'attunementTheory', name: 'Attunement Theory', cost: 12, desc: 'Unlock Attunement Seals in crafting.', effects: { unlockAttunement: true } },
+      { id: 'sigilCrafting', name: 'Sigil Crafting', cost: 14, desc: 'Unlock Sigil Press in crafting.', effects: { unlockSigilCrafting: true } },
+      { id: 'outreachPacts', name: 'Outreach Pacts', cost: 12, desc: '+15% follower gains from Outreach.', effects: { outreachBoost: 0.15 } },
       { id: 'academyRoots', name: 'Academy Roots', cost: 8, desc: 'Unlock basic academy logistics. +5% research gain.', effects: { research: 0.05 } },
       { id: 'elementalStudies', name: 'Elemental Studies', cost: 12, desc: 'Unlock Frost/Fire/Lightning spells and essence.', effects: { unlockElements: true } },
       { id: 'modularTowers', name: 'Modular Towers', cost: 14, desc: '+1 module slot per outpost.', effects: { moduleSlots: 1 } },
@@ -4591,6 +4542,7 @@
       { id: 'swiftClear', name: 'Swift Clear', desc: 'Clear 2 waves in 90s.', type: 'waves', target: 2, duration: 90, reward: { gold: 60, essence: { arcane: 6 } } },
       { id: 'lowMana', name: 'Humble Focus', desc: 'Clear a wave with mana below 40%.', type: 'manaLimit', target: 1, duration: 120, reward: { gold: 40, essence: { astral: 4 } } },
       { id: 'wardHold', name: 'Ward Hold', desc: 'Survive 70s without dropping below 40% wards.', type: 'wardHold', target: 70, duration: 100, reward: { gold: 55, essence: { fire: 4 } } },
+      { id: 'relicExpedition', name: 'Relic Expedition', desc: 'Clear 3 waves in 180s to locate a relic draft.', type: 'relicScout', target: 3, duration: 180, reward: { relicDraft: true } },
     ];
     const FOLLOWER_EVENTS = [
       {
@@ -4677,26 +4629,64 @@
       const val = g.mods[key];
       return typeof val === 'number' ? val : 0;
     }
+    function researchNodeLevel(node) {
+      if (!node || !node.repeatable) return 0;
+      const levels = (game.research && game.research.levels) ? game.research.levels : {};
+      return levels[node.id] || 0;
+    }
+    function researchNodeCost(node) {
+      if (!node) return 0;
+      if (!node.repeatable) return node.cost || 0;
+      const level = researchNodeLevel(node);
+      const scale = node.costScale || 1.6;
+      const base = node.baseCost || 6;
+      return Math.round(base * Math.pow(scale, level));
+    }
     function isResearchUnlocked(id) {
+      const node = RESEARCH_NODES.find(n => n.id === id);
+      if (node && node.repeatable) return researchNodeLevel(node) > 0;
       return !!(game.research && Array.isArray(game.research.unlocked) && game.research.unlocked.includes(id));
     }
     function researchEffect(key) {
       let total = 0;
       RESEARCH_NODES.forEach(n => {
-        if (!isResearchUnlocked(n.id)) return;
         const val = n.effects ? n.effects[key] : null;
-        if (typeof val === 'number') total += val;
+        if (typeof val !== 'number') return;
+        if (n.repeatable) {
+          total += val * researchNodeLevel(n);
+          return;
+        }
+        if (!isResearchUnlocked(n.id)) return;
+        total += val;
       });
       return total;
     }
     function researchFlag(key) {
-      return RESEARCH_NODES.some(n => isResearchUnlocked(n.id) && n.effects && n.effects[key]);
+      return RESEARCH_NODES.some(n => {
+        if (!n.effects || !n.effects[key]) return false;
+        return n.repeatable ? researchNodeLevel(n) > 0 : isResearchUnlocked(n.id);
+      });
     }
     function unlockResearchNode(id) {
       const node = RESEARCH_NODES.find(n => n.id === id);
-      if (!node || isResearchUnlocked(id)) return;
+      if (!node) return;
+      if (!game.research) game.research = initialResearchState();
+      if (node.repeatable) {
+        const level = researchNodeLevel(node);
+        if (node.maxLevel && level >= node.maxLevel) return;
+        const cost = researchNodeCost(node);
+        if ((game.research.points || 0) < cost) return;
+        game.research.points -= cost;
+        if (!game.research.levels) game.research.levels = {};
+        game.research.levels[node.id] = level + 1;
+        if (node.id === 'manaReservoir') game.studyCount = game.research.levels[node.id];
+        if (node.id === 'spellEtching') game.transcribeBonusPct = game.research.levels[node.id];
+        showToast('Research advanced', node.name + ' Lv.' + (level + 1));
+        return;
+      }
+      if (isResearchUnlocked(id)) return;
       const cost = node.cost || 0;
-      if ((game.research && game.research.points || 0) < cost) return;
+      if ((game.research.points || 0) < cost) return;
       game.research.points -= cost;
       game.research.unlocked = [...(game.research.unlocked || []), id];
       showToast('Research complete', node.name + ' unlocked.');
@@ -5059,9 +5049,9 @@
       let canAct = false;
       if (typeof ACTIVITIES !== 'undefined') {
         for (const a of ACTIVITIES) {
-          if (totalFloors() < a.unlockFloors) continue;
+          if (!isActivityUnlocked(a)) continue;
           const ritualMult = a.id === 'ritual' ? ritualCostMultiplier() : 1;
-          const stamCost = (a.costStaminaPct || 0) * maxStamina() * ritualMult;
+          const stamCost = activityStaminaCostPct(a) * maxStamina() * ritualMult;
           const focusCost = (typeof a.focusCost === 'function') ? a.focusCost() : (a.focusCost || 0);
           if ((game.stamina || 0) < stamCost) continue;
           if ((game.focus || 0) < focusCost) continue;
@@ -5106,7 +5096,16 @@
       const canUpgradeOutpost = outposts.some(o => o && o.built && canAffordCost(outpostUpgradeCost(o.level || 1)));
       const canHire = STAFF.some(s => !getStaffState(s.id).hired && canAffordCost(s.cost));
       setTabBadge('academyModal', canBuildOutpost || canUpgradeOutpost || canHire || availableFollowers() > 0);
-      const canResearch = RESEARCH_NODES.some(n => !isResearchUnlocked(n.id) && (game.research && game.research.points || 0) >= n.cost);
+      const canResearch = RESEARCH_NODES.some(n => {
+        const points = (game.research && game.research.points || 0);
+        const cost = researchNodeCost(n);
+        if (n.repeatable) {
+          const level = researchNodeLevel(n);
+          if (n.maxLevel && level >= n.maxLevel) return false;
+          return points >= cost;
+        }
+        return !isResearchUnlocked(n.id) && points >= cost;
+      });
       setTabBadge('libraryModal', canResearch);
       const contractComplete = Array.isArray(game.contracts) && game.contracts.some(c => c.complete && !c.claimed);
       setTabBadge('observatoryModal', contractComplete || !(game.encounter && game.encounter.active));
@@ -5202,7 +5201,7 @@
             prestigeTokenChoices.appendChild(btn);
           };
           addOpt('font', 'Keep 1 Mana Font');
-          addOpt('study', 'Keep 5% Study count');
+          addOpt('study', 'Keep 5% repeatable research');
           addOpt('relic', 'Keep 1 Relic', (game.relics || []).length > 0);
         }
       }
@@ -5463,6 +5462,21 @@
       });
     }
 
+    function isActivityUnlocked(activity) {
+      if (typeof activity.unlockCheck === 'function') return activity.unlockCheck();
+      if (typeof activity.unlockFloors === 'number') return totalFloors() >= activity.unlockFloors;
+      return true;
+    }
+    function activityUnlockHint(activity) {
+      if (typeof activity.unlockText === 'function') return activity.unlockText();
+      if (typeof activity.unlockFloors === 'number') return 'Unlocks at ' + activity.unlockFloors + ' floors';
+      return 'Unlock condition not met';
+    }
+    function activityStaminaCostPct(activity) {
+      if (typeof activity.costStaminaPct === 'function') return activity.costStaminaPct();
+      return activity.costStaminaPct || 0;
+    }
+
     function renderActivities() {
       activitiesDiv.innerHTML = '';
       const floors = Number(totalFloors()) || 0;
@@ -5472,8 +5486,7 @@
       const unlocked = [];
       const locked = [];
       ACTIVITIES.forEach(a => {
-        const unlockFloors = Number(a.unlockFloors) || 0;
-        if (floors >= unlockFloors) unlocked.push(a);
+        if (isActivityUnlocked(a)) unlocked.push(a);
         else locked.push(a);
       });
       locked.sort((a, b) => (Number(a.unlockFloors) || 0) - (Number(b.unlockFloors) || 0));
@@ -5481,8 +5494,7 @@
       activitiesToShow.forEach(a => {
         const btn = document.createElement('button');
         btn.textContent = a.name;
-        const unlockFloors = Number(a.unlockFloors) || 0;
-        const locked = unlockFloors > 0 && floors < unlockFloors;
+        const locked = !isActivityUnlocked(a);
         let detail = a.costText ? a.costText() : '';
         if (a.cooldownMs) {
           const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
@@ -5499,7 +5511,7 @@
         desc.innerHTML = a.desc + '<br><span class="detail">' + detail + '</span>';
         btn.appendChild(desc);
         const ritualMult = a.id === 'ritual' ? ritualCostMultiplier() : 1;
-        const costAmount = a.costStaminaPct != null ? maxStamina() * a.costStaminaPct * ritualMult : 0;
+        const costAmount = a.costStaminaPct != null ? maxStamina() * activityStaminaCostPct(a) * ritualMult : 0;
         const focusCost = (typeof a.focusCost === 'function') ? a.focusCost() : (a.focusCost || 0);
         const cooldownKey = a.cooldownKey || 'ritualActivityCooldownEnd';
         const onCooldown = a.cooldownMs && (game[cooldownKey] || 0) > Date.now();
@@ -5517,7 +5529,7 @@
         if (locked) {
           const hint = document.createElement('span');
           hint.className = 'unlock-hint';
-          hint.textContent = 'Unlocks at ' + unlockFloors + ' floors';
+          hint.textContent = activityUnlockHint(a);
           btn.appendChild(hint);
         }
         activitiesDiv.appendChild(btn);
@@ -5708,19 +5720,23 @@
       const ritualInfo = ritualWindowInfo();
       const ritualText = ritualInfo.inWindow ? ('Active (' + Math.ceil(ritualInfo.remaining / 1000) + 's)') : ('Next in ' + Math.ceil(ritualInfo.remaining / 1000) + 's');
       librarySummary.innerHTML = 'Research points: <strong>' + (game.research && game.research.points || 0).toFixed(2) + '</strong>' +
+        '<br>Mana Reservoir: <strong>Lv.' + manaReservoirLevel() + '</strong> · Spell Etching: <strong>Lv.' + spellEtchingLevel() + '</strong>' +
         '<br>Daily blessing: <strong>' + (getDailyBlessing() ? getDailyBlessing().name : 'None') + '</strong>' +
         '<br>Ritual window: <strong>' + ritualText + '</strong>';
 
       researchTree.innerHTML = '';
       RESEARCH_NODES.forEach(n => {
         const unlocked = isResearchUnlocked(n.id);
+        const level = n.repeatable ? researchNodeLevel(n) : 0;
+        const cost = researchNodeCost(n);
         const card = document.createElement('div');
         card.className = 'panel-card';
-        card.innerHTML = '<div class="title">' + n.name + '</div><div class="muted">' + n.desc + '</div>' +
-          '<div class="muted">Cost: ' + n.cost + ' RP</div>';
+        card.innerHTML = '<div class="title">' + n.name + (n.repeatable ? ' Lv.' + level : '') + '</div><div class="muted">' + n.desc + '</div>' +
+          '<div class="muted">Cost: ' + cost + ' RP</div>';
         const btn = document.createElement('button');
-        btn.textContent = unlocked ? 'Unlocked' : 'Unlock';
-        btn.disabled = unlocked || (game.research && game.research.points || 0) < n.cost;
+        const maxed = n.repeatable && n.maxLevel && level >= n.maxLevel;
+        btn.textContent = n.repeatable ? (maxed ? 'Maxed' : 'Upgrade') : (unlocked ? 'Unlocked' : 'Unlock');
+        btn.disabled = (!n.repeatable && unlocked) || (game.research && game.research.points || 0) < cost || maxed;
         btn.onclick = () => { unlockResearchNode(n.id); renderLibrary(); };
         card.appendChild(btn);
         researchTree.appendChild(card);
@@ -5802,7 +5818,9 @@
           const item = document.createElement('div');
           item.className = 'contract-item';
           const timeLeft = c.accepted && c.expiresAt ? Math.max(0, (c.expiresAt - Date.now()) / 1000) : 0;
+          const reward = c.reward && c.reward.relicDraft ? 'Relic draft' : 'Gold/Essence';
           item.innerHTML = '<strong>' + c.name + '</strong><div class="muted">' + c.desc + '</div>' +
+            '<div class="muted">Reward: ' + reward + '</div>' +
             '<div class="muted">Progress: ' + c.progress.toFixed(1) + '/' + c.target + (c.accepted ? ' · ' + timeLeft.toFixed(0) + 's' : '') + '</div>';
           const btn = document.createElement('button');
           if (!c.accepted) {
@@ -5927,13 +5945,15 @@
       if (!craftingPanel) return;
       craftingPanel.innerHTML = '';
       CRAFTING_RECIPES.forEach(r => {
+        if (typeof r.unlockCheck === 'function' && !r.unlockCheck()) return;
         const card = document.createElement('div');
         card.className = 'panel-card';
         card.innerHTML = '<div class="title">' + r.name + '</div><div class="muted">' + r.desc + '</div>' +
           '<div class="muted">Cost: ' + formatCost(r.cost) + '</div>';
         const btn = document.createElement('button');
         btn.textContent = 'Craft';
-        btn.disabled = !canAffordCost(r.cost);
+        const disabled = typeof r.disabled === 'function' ? r.disabled() : false;
+        btn.disabled = !canAffordCost(r.cost) || disabled;
         btn.onclick = () => {
           if (!payCost(r.cost)) return;
           r.effect();
@@ -6256,7 +6276,8 @@
       if (keepManaFont) game.prestigeTokens--;
       if (keepStudyPct) game.prestigeTokens--;
       if (keepRelic) game.prestigeTokens--;
-      const studyKept = keepStudyPct ? Math.floor((game.studyCount || 0) * 0.05) : 0;
+      const keptReservoir = keepStudyPct ? Math.floor(manaReservoirLevel() * 0.05) : 0;
+      const keptEtching = keepStudyPct ? Math.floor(spellEtchingLevel() * 0.05) : 0;
       const relicKept = keepRelic ? [game.relics[0]] : [];
       game.prestige = soft ? game.prestige : game.prestige + 1;
       game.softPrestige = soft ? game.softPrestige + 1 : game.softPrestige;
@@ -6306,7 +6327,12 @@
         flameSurgeTimer: 0,
         frostSlowTimer: 0,
       };
-      game.studyCount = studyKept;
+      game.studyCount = keptReservoir;
+      game.transcribeBonusPct = keptEtching;
+      if (game.research && game.research.levels) {
+        game.research.levels.manaReservoir = keptReservoir;
+        game.research.levels.spellEtching = keptEtching;
+      }
       game.stamina = maxStamina();
       game.wardOfPreservationUsed = false;
       game.prestigeTokenChoice = null;
