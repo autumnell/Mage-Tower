@@ -557,15 +557,21 @@
     #topBar {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-      padding: 14px 24px;
+      justify-content: center;
+      padding: 16px 24px;
       background: var(--bg-panel);
       border-bottom: 1px solid var(--border);
       min-height: 58px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
       position: relative;
+    }
+    #topBarInner {
+      width: min(1240px, 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
     }
     #topLeft {
       display: flex;
@@ -594,20 +600,30 @@
     #topCenter {
       flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       position: relative;
-      gap: 16px;
-      min-width: 240px;
+      gap: 10px;
+      min-width: 260px;
     }
     #topActions {
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      min-width: 160px;
+      min-width: 120px;
       gap: 12px;
     }
-    #topBar .resources { display: flex; align-items: center; justify-content: center; gap: 28px; font-size: 1.05em; flex-wrap: wrap; }
+    #topBar .resources {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      font-size: 1.05em;
+      flex-wrap: wrap;
+      max-width: 980px;
+      width: 100%;
+    }
     #topBar .resource-block {
       display: flex;
       flex-direction: column;
@@ -631,10 +647,8 @@
       border-radius: 999px;
       padding: 6px 10px;
       white-space: nowrap;
-      position: absolute;
-      left: 75%;
-      top: 50%;
-      transform: translate(-50%, -50%);
+      position: static;
+      transform: none;
       box-shadow: 0 0 12px rgba(212, 165, 116, 0.18);
     }
     #topBar .resource-block .sub { font-size: 0.88em; opacity: 0.88; color: var(--text-muted); }
@@ -664,6 +678,7 @@
       position: relative;
       overflow: hidden;
       min-height: 0;
+      padding: 22px 0 120px;
     }
     /* medieval landscape */
     #main::before, #main::after {
@@ -686,7 +701,7 @@
         repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 40px, rgba(0,0,0,0.05) 40px 80px);
       opacity: 0.9;
     }
-    #main #towerContainer { margin-bottom: 160px; }
+    #main #towerContainer { margin-bottom: 150px; }
     #towerControls {
       position: absolute;
       bottom: 18px;
@@ -697,6 +712,7 @@
       z-index: 5;
       flex-wrap: wrap;
       justify-content: center;
+      width: min(720px, 92vw);
     }
     .tower-control-card {
       background: rgba(18, 22, 30, 0.9);
@@ -704,6 +720,7 @@
       border-radius: var(--radius);
       padding: 10px 12px;
       min-width: 220px;
+      flex: 1 1 220px;
       box-shadow: var(--shadow);
     }
     .tower-control-title {
@@ -715,15 +732,16 @@
     #bottomNav {
       display: flex;
       justify-content: center;
+      flex-wrap: wrap;
       gap: 6px;
+      row-gap: 8px;
       background: var(--bg-panel);
       border-top: 1px solid var(--border);
-      padding: 8px 12px 10px;
+      padding: 10px 18px 12px;
       box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
     }
     #bottomNav .tab {
-      flex: 1;
-      max-width: 200px;
+      flex: 0 1 190px;
       padding: 14px 18px;
       border: none;
       border-radius: 12px;
@@ -768,7 +786,7 @@
       background: transparent;
       display: none;
       align-items: center;
-      justify-content: flex-end;
+      justify-content: center;
       z-index: 15;
       pointer-events: none;
       padding: 6vh 0;
@@ -969,6 +987,9 @@
     @media (max-width: 520px) {
       .game-title { font-size: 1em; }
       #topBar { padding: 10px 14px; gap: 10px; }
+      #topBarInner { justify-content: center; }
+      #topLeft { width: 100%; }
+      #topActions { width: 100%; justify-content: center; }
       #topBar .resource-block { padding: 4px 8px; font-size: 0.95em; }
       #topCenter { min-width: 0; flex-wrap: wrap; }
       .exhausted-hint { position: static; transform: none; margin-left: 0; }
@@ -1078,6 +1099,8 @@
       gap: 12px;
       flex-wrap: wrap;
       margin-top: 6px;
+      width: 100%;
+      max-width: 820px;
     }
     #topBar .resource-block.compact {
       padding: 4px 10px;
@@ -1222,55 +1245,57 @@
 </head>
 <body>
   <header id="topBar">
-    <div id="topLeft">
-      <h1 class="game-title" aria-hidden="true">Mage Tower</h1>
-      <div class="speed-controls">
-        <button id="pauseBtn" type="button" aria-label="Pause">Pause</button>
-        <button id="playBtn" type="button" aria-label="Play">Play</button>
-        <button id="speedBtn" type="button" aria-label="Speed x2">2x</button>
-      </div>
-    </div>
-    <div id="topCenter">
-      <div class="resources">
-        <div id="manaBlock" class="resource-block mana-block">
-          <span class="main mana">Mana: <span id="mana">0</span> / <span id="manaMax">1000</span></span>
-          <span class="sub">Mana/sec: <span id="manaPerSec">0</span></span>
-          <div class="mini-progress" aria-hidden="true"><div id="manaFill" class="mini-fill"></div></div>
-        </div>
-        <div id="staminaBlock" class="resource-block stamina-block">
-          <span class="main stamina">Stamina: <span id="stamina">0</span> / <span id="staminaMax">100</span></span>
-          <span class="sub">Stamina/sec: <span id="staminaPerSec">0.20</span></span>
-          <div class="mini-progress stamina" aria-hidden="true"><div id="staminaFill" class="mini-fill"></div></div>
-        </div>
-        <div id="focusBlock" class="resource-block focus-block">
-          <span class="main focus">Focus: <span id="focus">0</span> / <span id="focusMax">100</span></span>
-          <span class="sub">Focus/sec: <span id="focusPerSec">0</span> <span id="focusIdleHint">(after 60s idle)</span></span>
-          <div class="mini-progress focus" aria-hidden="true"><div id="focusFill" class="mini-fill"></div></div>
+    <div id="topBarInner">
+      <div id="topLeft">
+        <h1 class="game-title" aria-hidden="true">Mage Tower</h1>
+        <div class="speed-controls">
+          <button id="pauseBtn" type="button" aria-label="Pause">Pause</button>
+          <button id="playBtn" type="button" aria-label="Play">Play</button>
+          <button id="speedBtn" type="button" aria-label="Speed x2">2x</button>
         </div>
       </div>
-      <div id="secondaryResources" class="secondary-resources">
-        <div id="followersBlock" class="resource-block compact">
-          <span class="main">Followers: <span id="followersTotal">0</span></span>
-          <span class="meta">Reputation: <span id="reputation">0</span>%</span>
+      <div id="topCenter">
+        <div class="resources">
+          <div id="manaBlock" class="resource-block mana-block">
+            <span class="main mana">Mana: <span id="mana">0</span> / <span id="manaMax">1000</span></span>
+            <span class="sub">Mana/sec: <span id="manaPerSec">0</span></span>
+            <div class="mini-progress" aria-hidden="true"><div id="manaFill" class="mini-fill"></div></div>
+          </div>
+          <div id="staminaBlock" class="resource-block stamina-block">
+            <span class="main stamina">Stamina: <span id="stamina">0</span> / <span id="staminaMax">100</span></span>
+            <span class="sub">Stamina/sec: <span id="staminaPerSec">0.20</span></span>
+            <div class="mini-progress stamina" aria-hidden="true"><div id="staminaFill" class="mini-fill"></div></div>
+          </div>
+          <div id="focusBlock" class="resource-block focus-block">
+            <span class="main focus">Focus: <span id="focus">0</span> / <span id="focusMax">100</span></span>
+            <span class="sub">Focus/sec: <span id="focusPerSec">0</span> <span id="focusIdleHint">(after 60s idle)</span></span>
+            <div class="mini-progress focus" aria-hidden="true"><div id="focusFill" class="mini-fill"></div></div>
+          </div>
         </div>
-        <div id="goldBlock" class="resource-block compact">
-          <span class="main">Gold: <span id="gold">0</span></span>
-          <span class="meta">Upkeep: <span id="goldUpkeep">0</span>/min</span>
+        <div id="secondaryResources" class="secondary-resources">
+          <div id="followersBlock" class="resource-block compact">
+            <span class="main">Followers: <span id="followersTotal">0</span></span>
+            <span class="meta">Reputation: <span id="reputation">0</span>%</span>
+          </div>
+          <div id="goldBlock" class="resource-block compact">
+            <span class="main">Gold: <span id="gold">0</span></span>
+            <span class="meta">Upkeep: <span id="goldUpkeep">0</span>/min</span>
+          </div>
+          <div id="essenceBlock" class="resource-block compact has-tooltip">
+            <span class="main">Essence: <span id="essenceTotal">0</span></span>
+            <span class="meta" style="display:none;">Breakdown</span>
+            <div id="essenceTooltip" class="resource-tooltip"></div>
+          </div>
         </div>
-        <div id="essenceBlock" class="resource-block compact has-tooltip">
-          <span class="main">Essence: <span id="essenceTotal">0</span></span>
-          <span class="meta" style="display:none;">Breakdown</span>
-          <div id="essenceTooltip" class="resource-tooltip"></div>
-        </div>
+        <div id="exhaustedHint" class="exhausted-hint" style="display:none"></div>
       </div>
-      <div id="exhaustedHint" class="exhausted-hint" style="display:none"></div>
-    </div>
-    <div id="topActions">
-      <div id="timeDilationStatus" class="spell-status-inline" style="display:none">
-        <span class="label">Time Dilation</span>
-        <span id="timeDilationTime" class="sub">0.0s left</span>
-        <span id="timeDilationBoost" class="sub">Boost: x1.00</span>
-        <div class="progress" style="width:80px;margin:0;"><div id="timeDilationFill" class="fill"></div></div>
+      <div id="topActions">
+        <div id="timeDilationStatus" class="spell-status-inline" style="display:none">
+          <span class="label">Time Dilation</span>
+          <span id="timeDilationTime" class="sub">0.0s left</span>
+          <span id="timeDilationBoost" class="sub">Boost: x1.00</span>
+          <div class="progress" style="width:80px;margin:0;"><div id="timeDilationFill" class="fill"></div></div>
+        </div>
       </div>
     </div>
   </header>
